@@ -61,4 +61,4 @@ AM_CPPFLAGS = $(MESOS_CPPFLAGS) -Wall -Werror
 # Library containing kerberos ticket forwarding module.
 pkglib_LTLIBRARIES += libmetaswitch_network_isolator.la
 libmetaswitch_network_isolator_la_SOURCES = isolator/network_isolator.cpp
-libmetaswitch_network_isolator_la_LDFLAGS = -release $(PACKAGE_VERSION) -shared -lmesos
+libmetaswitch_network_isolator_la_LDFLAGS = -release $(PACKAGE_VERSION) -shared $(MESOS_LDFLAGS)
