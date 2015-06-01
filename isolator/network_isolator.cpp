@@ -77,6 +77,11 @@ public:
 
   virtual ~MetaswitchNetworkIsolatorProcess() {}
 
+  virtual process::Future<Option<int>> namespaces()
+  {
+    return CLONE_NEWNET;
+  }
+
   virtual process::Future<Nothing> recover(
       const std::list<mesos::slave::ExecutorRunState>& states,
       const hashset<ContainerID>& orphans)
