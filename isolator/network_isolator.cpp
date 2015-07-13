@@ -41,9 +41,11 @@
  * possibility of such damages.
  */
 
+#include <mesos/hook.hpp>
 #include <mesos/mesos.hpp>
 #include <mesos/module.hpp>
 
+#include <mesos/module/hook.hpp>
 #include <mesos/module/isolator.hpp>
 
 #include <mesos/slave/isolator.hpp>
@@ -61,10 +63,28 @@ using namespace mesos;
 
 using mesos::slave::Isolator;
 
+struct Info
+{
+  Info(const Option<std::string>& _ipAddress,
+      const Option<std::string>& _profile)
+    : ipAddress(_ipAddress),
+      profile(_profile) {}
+
+  // The IP address to assign to the container, or NONE for auto-assignment.
+  const Option<std::string> ipAddress;
+
+  // The network profile name to assign to the container, or NONE for the
+  // default.
+  const Option<std::string> profile;
+};
+
 const char* initializationKey = "initialization_command";
 const char* cleanupKey = "cleanup_command";
 const char* isolateKey = "isolate_command";
 const char* pythonPath = "/usr/bin/python";
+
+hashmap<ContainerID, Info*> *infos = NULL;
+hashmap<ExecutorID, ContainerID> *executors = NULL;
 
 class CalicoIsolatorProcess : public mesos::slave::IsolatorProcess
 {
@@ -97,6 +117,8 @@ public:
       const Option<std::string>& user)
   {
     LOG(INFO) << "CalicoIsolator::prepare";
+
+#if 0
     std::string ipAddress = "auto";
     std::string profile = "none";
     foreach (const Environment_Variable& var,
@@ -110,6 +132,10 @@ public:
       }
     }
     infos[containerId] = new Info(ipAddress, profile);
+#endif
+
+    (*executors)[executorInfo.executor_id()] = containerId;
+
     foreach (const Parameter& parameter, parameters.parameter()) {
       if (parameter.key() == initializationKey) {
         CommandInfo commandInfo;
@@ -120,11 +146,13 @@ public:
     return None();
   }
 
+  // TODO(kapil): File a Mesos ticket to extend isolate() signature
+  // to include ExecutorInfo.
   virtual process::Future<Nothing> isolate(
       const ContainerID& containerId,
       pid_t pid)
   {
-    const Info* info = infos[containerId];
+    const Info* info = (*infos)[containerId];
     foreach (const Parameter& parameter, parameters.parameter()) {
       if (parameter.key() == isolateKey) {
         std::vector<std::string> argv(7);
@@ -166,11 +194,11 @@ public:
   virtual process::Future<Nothing> cleanup(
       const ContainerID& containerId)
   {
-    if (!infos.contains(containerId)) {
+    if (!infos->contains(containerId)) {
       LOG(WARNING) << "Ignoring cleanup for unknown container " << containerId;
       return Nothing();
     }
-    infos.erase(containerId);
+    infos->erase(containerId);
     foreach (const Parameter& parameter, parameters.parameter()) {
       if (parameter.key() == cleanupKey) {
         std::vector<std::string> argv(4);
@@ -188,37 +216,97 @@ public:
   }
 
 private:
-  struct Info
-  {
-    Info(const Option<std::string>& _ipAddress,
-         const Option<std::string>& _profile)
-      : ipAddress(_ipAddress),
-        profile(_profile) {}
-
-    // The IP address to assign to the container, or NONE for auto-assignment.
-    const Option<std::string> ipAddress;
-
-    // The network profile name to assign to the container, or NONE for the
-    // default.
-    const Option<std::string> profile;
-  };
-
   CalicoIsolatorProcess(const Parameters& parameters_)
     : parameters(parameters_) {}
 
   const Parameters parameters;
-  hashmap<ContainerID, Info*> infos;
 };
 
 
 static Isolator* createCalicoIsolator(const Parameters& parameters)
 {
   LOG(INFO) << "Loading Calico Isolator module";
+  if (infos == NULL) {
+    infos = new hashmap<ContainerID, Info*>();
+    CHECK(executors == NULL);
+    executors = new hashmap<ExecutorID, ContainerID>();
+  }
+
   Try<Isolator*> result = CalicoIsolatorProcess::create(parameters);
   if (result.isError()) {
     return NULL;
   }
   return result.get();
+}
+
+
+
+class CalicoHook : public Hook
+{
+public:
+  // We need this hook to set "LIBPROCESS_IP" environment for the
+  // executor. This would force the executor to bind to the given IP
+  // instead of binding to the loopback IP.
+  // In this hook, we create a new environment variable "LIBPROCESS_IP"
+  // TODO(kapil): File a Mesos ticket to extend this signature
+  // to also include ContainerID.
+  virtual Result<Environment> slaveExecutorEnvironmentDecorator(
+      const ExecutorInfo& executorInfo)
+  {
+    LOG(INFO) << "CalicoHook::slaveExecutorEnvironmentDecorator";
+
+    Environment environment;
+
+    if (executorInfo.command().has_environment()) {
+      environment.CopyFrom(executorInfo.command().environment());
+    }
+
+    std::string ipAddress = "auto";
+    std::string profile = "none";
+    foreach (const Environment_Variable& var,
+             executorInfo.command().environment().variables()) {
+      LOG(INFO) << "ENV: " << var.name() << "=" << var.value();
+      if (var.name() == "CALICO_IP") {
+        ipAddress = var.value();
+      }
+      else if (var.name() == "CALICO_PROFILE") {
+        profile = var.value();
+      }
+    }
+
+    std::string libprocessIP = "0.0.0.0";
+    if (ipAddress == "auto") {
+     // TODO(kapil): Contact Calico IPAM to calculate libprocessIP.
+    }
+
+    foreach (const Environment_Variable& var,
+             executorInfo.command().environment().variables()) {
+      if (var.name() != "LIBPROCESS_IP") {
+        environment.add_variables()->CopyFrom(var);
+      }
+    }
+
+    Environment::Variable* variable = environment.add_variables();
+    variable->set_name("LIBPROCESS_IP");
+    variable->set_value(libprocessIP);
+
+    // TODO(kapil): Update CALICO_IP with the correct IP (if needed).
+
+    if (!executors->contains(executorInfo.executor_id())) {
+      LOG(WARNING) << "Unknown executor " << executorInfo.executor_id();
+      return Error("Unknown executor");
+    }
+    const ContainerID containerId = executors->at(executorInfo.executor_id());
+    (*infos)[containerId] = new Info(ipAddress, profile);
+
+    return environment;
+  }
+};
+
+
+static Hook* createCalicoHook(const Parameters& parameters)
+{
+  return new CalicoHook();
 }
 
 
@@ -232,3 +320,14 @@ mesos::modules::Module<Isolator> com_mesosphere_mesos_CalicoIsolator(
     "Calico Isolator module.",
     NULL,
     createCalicoIsolator);
+
+
+// Declares the Calico hook module 'org_apache_mesos_CalicoHook'.
+mesos::modules::Module<Hook> com_mesosphere_mesos_CalicoHook(
+    MESOS_MODULE_API_VERSION,
+    MESOS_VERSION,
+    "Mesosphere",
+    "support@mesosphere.com",
+    "Calico Hook module.",
+    NULL,
+    createCalicoHook);
