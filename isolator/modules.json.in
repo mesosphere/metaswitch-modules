@@ -12,7 +12,7 @@
             },
             {
               "key": "ipam_command",
-              "value": "@abs_top_srcdir@/calico_isolator.py"
+              "value": "@abs_top_srcdir@/calico_isolator"
             }
           ]
         },
