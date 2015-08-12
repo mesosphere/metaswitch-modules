@@ -7,15 +7,7 @@
           "name": "com_mesosphere_mesos_CalicoIsolator",
           "parameters": [
             {
-              "key": "initialization_command",
-              "value": "python @abs_top_srcdir@/calico_isolator.py initialize"
-            },
-            {
               "key": "isolate_command",
-              "value": "@abs_top_srcdir@/calico_isolator.py"
-            },
-            {
-              "key": "cleanup_command",
               "value": "@abs_top_srcdir@/calico_isolator.py"
             },
             {
