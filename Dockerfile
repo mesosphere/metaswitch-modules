@@ -28,7 +28,7 @@ RUN ./bootstrap && \
     mkdir build && \
     cd build && \
     export LD_LIBRARY_PATH=LD_LIBRARY_PATH:/usr/local/lib && \
-    ../configure --with-mesos-build-dir=/mesos/build --with-mesos-root=/mesos && \
+    ../configure --with-mesos=/usr/local --with-protobuf=/usr && \
     make all
 
 # Add python module requirements
