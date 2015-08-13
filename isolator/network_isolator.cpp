@@ -167,7 +167,6 @@ process::Future<Option<ContainerPrepareInfo>> CalicoIsolatorProcess::prepare(
     const ContainerID& containerId,
     const ExecutorInfo& executorInfo,
     const string& directory,
-    const Option<string>& rootfs,
     const Option<string>& user)
 {
   LOG(INFO) << "CalicoIsolator::prepare";
@@ -321,16 +320,19 @@ static Isolator* createCalicoIsolator(const Parameters& parameters)
 // TODO(karya): Use the hooks for Task Status labels.
 class CalicoHook : public Hook
 {
+public:
   virtual Result<Labels> slaveRunTaskLabelDecorator(
       const TaskInfo& taskInfo,
       const ExecutorInfo& executorInfo,
       const FrameworkInfo& frameworkInfo,
       const SlaveInfo& slaveInfo)
   {
+    LOG(INFO) << "CalicoHook:: run task label decorator";
     if (taskInfo.has_labels()) {
       foreach (const Label& label, taskInfo.labels().labels()) {
         if (label.key() == netgroupsLabelKey) {
           (*executorNetgroups)[executorInfo.executor_id()] = label.value();
+          LOG(INFO) << "Label: <" << label.key() << ":" << label.value() << ">";
         }
       }
     }
