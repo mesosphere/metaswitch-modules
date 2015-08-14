@@ -180,7 +180,7 @@ process::Future<Option<ContainerPrepareInfo>> CalicoIsolatorProcess::prepare(
     const string& directory,
     const Option<string>& user)
 {
-  LOG(INFO) << "CalicoIsolator::prepare";
+  LOG(INFO) << "CalicoIsolator::prepare for container: " << containerId;
 
   if (!executorNetgroups->contains(executorInfo.executor_id())) {
     return Failure(
@@ -236,8 +236,9 @@ process::Future<Nothing> CalicoIsolatorProcess::isolate(
     const ContainerID& containerId,
     pid_t pid)
 {
-  if (infos->contains(containerId)) {
-    LOG(FATAL) << "Unknown container id: " << containerId;
+  if (!infos->contains(containerId)) {
+    LOG(ERROR) << "Unknown container id: " << containerId;
+    return Failure("Unknown container id: " + containerId.value());
   }
   const Info* info = (*infos)[containerId];
 
