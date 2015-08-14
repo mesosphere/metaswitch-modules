@@ -102,8 +102,10 @@ static Try<OutProto> runCommand(const string& path, const InProto& command)
   CHECK_SOME(child);
 
   string jsonCommand = stringify(JSON::Protobuf(command));
-  process::io::write(child.get().in().get(), jsonCommand);
+
   LOG(INFO) << "Sending IP request command to IPAM: " << jsonCommand;
+  process::io::write(child.get().in().get(), jsonCommand);
+  os::close(child.get().in().get());
 
   waitpid(child.get().pid(), NULL, 0);
   string output = process::io::read(child.get().out().get()).get();
