@@ -103,13 +103,13 @@ static Try<OutProto> runCommand(const string& path, const InProto& command)
 
   string jsonCommand = stringify(JSON::Protobuf(command));
 
-  LOG(INFO) << "Sending IP request command to IPAM: " << jsonCommand;
+  LOG(INFO) << "Sending command to " + path + ": " << jsonCommand;
   process::io::write(child.get().in().get(), jsonCommand);
   os::close(child.get().in().get());
 
   waitpid(child.get().pid(), NULL, 0);
   string output = process::io::read(child.get().out().get()).get();
-  LOG(INFO) << "Got response: " << output << " from " << path;
+  LOG(INFO) << "Got response from " << path << ": " << output;
 
   Try<JSON::Object> jsonOutput_ = JSON::parse<JSON::Object>(output);
   if (jsonOutput_.isError()) {
@@ -248,7 +248,7 @@ process::Future<Nothing> CalicoIsolatorProcess::isolate(
   isolatorArgs->set_container_id(containerId.value());
   isolatorArgs->set_pid(pid);
   isolatorArgs->add_ipv4_addrs(info->ipAddress);
-  isolatorArgs->add_ipv6_addrs();
+  // isolatorArgs->add_ipv6_addrs();
   foreach (const string& netgroup, info->netgroups) {
     isolatorArgs->add_netgroups(netgroup);
   }
