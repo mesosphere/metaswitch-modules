@@ -18,6 +18,7 @@ ADD ./calico_isolator.py /isolator/
 ADD ./configure.ac /isolator/
 ADD ./Makefile.am /isolator/
 ADD ./requirements.txt /isolator/
+ADD ./calico-node.tar /isolator/
 
 WORKDIR /isolator
 
