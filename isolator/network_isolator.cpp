@@ -111,15 +111,24 @@ static Try<OutProto> runCommand(const string& path, const InProto& command)
   string output = process::io::read(child.get().out().get()).get();
   LOG(INFO) << "Got response: " << output << " from " << path;
 
-  Try<JSON::Object> jsonOutput = JSON::parse<JSON::Object>(output);
-  if (jsonOutput.isError()) {
+  Try<JSON::Object> jsonOutput_ = JSON::parse<JSON::Object>(output);
+  if (jsonOutput_.isError()) {
     return Error(
         "Error parsing output '" + output + "' to JSON string" +
-        jsonOutput.error());
+        jsonOutput_.error());
+  }
+  JSON::Object jsonOutput = jsonOutput_.get();
+
+  Result<JSON::Value> error = jsonOutput.find<JSON::Value>("error");
+  if (error.isSome() && !error.get().is<JSON::Null>()) {
+    return Error(path + " returned error: " + stringify(error.get()));
   }
 
-  Try<OutProto> result = protobuf::parse<OutProto>(jsonOutput.get());
-  if (jsonOutput.isError()) {
+  // Protobuf can't parse JSON "null" values; remove error from the object.
+  jsonOutput.values.erase("error");
+
+  Try<OutProto> result = protobuf::parse<OutProto>(jsonOutput);
+  if (result.isError()) {
     return Error(
         "Error parsing output '" + output + "' to Protobuf" + result.error());
   }
@@ -201,9 +210,7 @@ process::Future<Option<ContainerPrepareInfo>> CalicoIsolatorProcess::prepare(
   Try<IPAMResponse> response =
     runCommand<IPAMRequestIPMessage, IPAMResponse>(ipamClientPath, ipamMessage);
   if (response.isError()) {
-    return Failure("Error running IPAM IP request command: " + response.error());
-  } else if (response.get().has_error()) {
-    return Failure("Error assigning IP " + response.get().error());
+    return Failure("Error allocating IP from IPAM: " + response.error());
   } else if (response.get().ipv4().size() == 0) {
     return Failure("No IPv4 addresses received from IPAM.");
   }
@@ -251,8 +258,6 @@ process::Future<Nothing> CalicoIsolatorProcess::isolate(
         isolatorClientPath, isolatorMessage);
   if (response.isError()) {
     return Failure("Error running isolate command: " + response.error());
-  } else if (response.get().has_error()) {
-    return Failure("Error isolating " + response.get().error());
   }
   return Nothing();
 }
@@ -276,8 +281,6 @@ process::Future<Nothing> CalicoIsolatorProcess::cleanup(
     runCommand<IPAMReleaseIPMessage, IPAMResponse>(ipamClientPath, ipamMessage);
   if (response.isError()) {
     return Failure("Error releasing IP from IPAM: " + response.error());
-  } else if (response.get().has_error()) {
-    return Failure("Error releasing IP " + response.get().error());
   }
 
   IsolatorCleanupMessage isolatorMessage;
@@ -288,9 +291,7 @@ process::Future<Nothing> CalicoIsolatorProcess::cleanup(
     runCommand<IsolatorCleanupMessage, IsolatorResponse>(
         isolatorClientPath, isolatorMessage);
   if (isolatorResponse.isError()) {
-    return Failure("Error running cleanup command:" + isolatorResponse.error());
-  } else if (isolatorResponse.get().has_error()) {
-    return Failure("Error doing cleanup " + isolatorResponse.get().error());
+    return Failure("Error doing cleanup:" + isolatorResponse.error());
   }
 
   return Nothing();
