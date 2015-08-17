@@ -20,7 +20,6 @@ mesosmaster:
 
 slave1:
   build: .
-  hostname: slave1.service.consul
   privileged: true
   ports:
     - "5051:5051"
@@ -28,7 +27,6 @@ slave1:
     - mesosmaster
     - zookeeper
     - etcd
-    - consul
   volumes:
     - /var/log/mesos:/var/log/mesos
   environment:
@@ -47,7 +45,6 @@ slave1:
 
 slave2:
   build: .
-  hostname: slave2.service.consul
   privileged: true
   ports:
     - "5052:5051"
@@ -55,7 +52,6 @@ slave2:
     - mesosmaster
     - zookeeper
     - etcd
-    - consul
   volumes:
     - /var/log/mesos:/var/log/mesos
   environment:
@@ -85,7 +81,3 @@ marathon:
 
 etcd:
   image: spikecurtis/single-etcd
-
-consul:
-  image: progrium/consul
-  command: "-server -bootstrap-expect 1"

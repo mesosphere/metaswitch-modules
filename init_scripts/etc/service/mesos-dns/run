@@ -1,13 +1,4 @@
 #!/bin/sh
 ip addr add 192.168.255.254/32 dev lo
-
-# Grab consul's IP, which should be in the host file thanks to the docker-compose link
-CONSUL_IP=`cat /etc/hosts | grep -P "([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\tconsul " | awk '{ print $1 }'`
-
-# Replace the upstream DNS IP with CONSUL_IP
-cat /etc/config/mesos-dns.json | sed "s/\[\"8.8.8.8\"\]/\[\"$CONSUL_IP\"\]/g" > /etc/config/mesos-dns-consul.json
-
-# Configure this slave as a service on Consul
-curl $CONSUL_IP:8500/v1/agent/service/register -d '{"Name": "'"$(hostname -a)"'", "Address": "'"$(hostname --ip)"'"}'
-exec 2>&1
 exec mesos-dns -config=/etc/config/mesos-dns.json
+
