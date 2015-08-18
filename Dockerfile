@@ -14,7 +14,7 @@ RUN wget https://dl.dropboxusercontent.com/u/4550074/mesos/mesos-dns -O /usr/bin
 ADD ./isolator /isolator/isolator/
 ADD ./m4 /isolator/m4/
 ADD ./bootstrap /isolator/
-ADD ./calico_isolator.py /isolator/
+ADD ./calico_isolator /isolator/
 ADD ./configure.ac /isolator/
 ADD ./Makefile.am /isolator/
 ADD ./requirements.txt /isolator/
@@ -57,7 +57,7 @@ VOLUME /var/lib/docker
 ###################
 # Calico
 ###################
-RUN wget https://github.com/Metaswitch/calico-docker/releases/download/v0.5.1/calicoctl && \
+RUN wget https://github.com/Metaswitch/calico-docker/releases/download/v0.5.5/calicoctl && \
     chmod +x calicoctl && \
     mv calicoctl /usr/local/bin/
 

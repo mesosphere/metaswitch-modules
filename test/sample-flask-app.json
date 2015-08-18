@@ -8,7 +8,8 @@
         "CALICO_PROFILE": "flask"
     },
     "labels": {
-        "calico": "testcalico"
+        "calico": "testcalico",
+        "network_isolator.netgroups": "default"
     },
     "instances": 1,
     "ports": [5000],

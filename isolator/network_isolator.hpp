@@ -90,7 +90,6 @@ public:
       const ContainerID& containerId,
       const ExecutorInfo& executorInfo,
       const std::string& directory,
-      const Option<std::string>& rootfs,
       const Option<std::string>& user);
 
   process::Future<Nothing> isolate(
@@ -144,7 +143,6 @@ public:
       const ContainerID& containerId,
       const ExecutorInfo& executorInfo,
       const std::string& directory,
-      const Option<std::string>& rootfs,
       const Option<std::string>& user)
   {
     return dispatch(process.get(),
@@ -152,7 +150,6 @@ public:
                     containerId,
                     executorInfo,
                     directory,
-                    rootfs,
                     user);
   }
 
