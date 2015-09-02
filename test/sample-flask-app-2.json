@@ -4,7 +4,6 @@
     "cpus": 0.1,
     "mem": 128.0,
     "labels": {
-        "calico": "testcalico",
         "network_isolator.netgroups": "default"
     },
     "instances": 1,
