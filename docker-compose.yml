@@ -19,7 +19,7 @@ mesosmaster:
     - zookeeper
 
 slave1:
-  image: mesosphere/slave
+  build: .
   privileged: true
   ports:
     - "5051:5051"
@@ -40,12 +40,11 @@ slave1:
     - MESOS_ISOLATION=com_mesosphere_mesos_CalicoIsolator
     - MESOS_HOOKS=com_mesosphere_mesos_CalicoHook
     - ETCD_AUTHORITY=etcd:4001
-    - MESOS_ATTRIBUTES=public:true
   dns:
    - 192.168.255.254
 
 slave2:
-  image: mesosphere/slave
+  build: .
   privileged: true
   ports:
     - "5052:5051"
@@ -66,6 +65,7 @@ slave2:
     - MESOS_ISOLATION=com_mesosphere_mesos_CalicoIsolator
     - MESOS_HOOKS=com_mesosphere_mesos_CalicoHook
     - ETCD_AUTHORITY=etcd:4001
+    - MESOS_ATTRIBUTES=public:true
   dns:
    - 192.168.255.254
 

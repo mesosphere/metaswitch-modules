@@ -51,49 +51,141 @@
 #include <mesos/slave/isolator.hpp>
 
 #include <process/future.hpp>
+#include <process/io.hpp>
 #include <process/owned.hpp>
 #include <process/process.hpp>
 #include <process/subprocess.hpp>
-#include <process/io.hpp>
 
-#include <stout/try.hpp>
-#include <stout/stringify.hpp>
 #include <stout/hashmap.hpp>
 #include <stout/option.hpp>
+#include <stout/protobuf.hpp>
+#include <stout/stringify.hpp>
+#include <stout/try.hpp>
+#include <stout/uuid.hpp>
 
+#include "interface.hpp"
 #include "network_isolator.hpp"
 
 using namespace mesos;
+using namespace network_isolator;
 using namespace process;
+
+using std::string;
+using std::vector;
 
 using mesos::slave::ContainerPrepareInfo;
 using mesos::slave::Isolator;
 
-const char* initializationKey = "initialization_command";
-const char* cleanupKey = "cleanup_command";
-const char* isolateKey = "isolate_command";
-const char* ipamKey = "ipam_command";
+const char* ipamClientKey = "ipam_command";
+const char* isolatorClientKey = "isolator_command";
 const char* pythonPath = "/usr/bin/python";
 const char* ipAddressLabelKey = "MesosContainerizer.NetworkSettings.IPAddress";
 
+const char* netgroupsLabelKey = "network_isolator.netgroups";
+
 hashmap<ContainerID, Info*> *infos = NULL;
-hashmap<ExecutorID, ContainerID> *executors = NULL;
+hashmap<ExecutorID, ContainerID> *executorContainerIds = NULL;
+hashmap<ExecutorID, string> *executorNetgroups = NULL;
+
+
+template <typename InProto, typename OutProto>
+static Try<OutProto> runCommand(const string& path, const InProto& command)
+{
+  vector<string> argv(1);
+  argv[0] = path;
+  Try<process::Subprocess> child = process::subprocess(
+      argv[0],
+      argv,
+      process::Subprocess::PIPE(),
+      process::Subprocess::PIPE(),
+      process::Subprocess::PIPE());
+  CHECK_SOME(child);
+
+  string jsonCommand = stringify(JSON::Protobuf(command));
+
+  LOG(INFO) << "Sending command to " + path + ": " << jsonCommand;
+  process::io::write(child.get().in().get(), jsonCommand);
+
+  {
+    // Temporary hack until Subprocess supports closing stdin.
+    // We open /dev/null on fd and dup it over to child's stdin, effectively
+    // closing the existing pipe on stdin. We then close the original fd and
+    // continue with our business. Child's stdin/out/err are closed in its
+    // destructor.
+    // TODO(kapil): Replace this block with child.get().closeIn() or
+    // equivalient.
+    Try<int> fd = os::open("/dev/null", O_WRONLY);
+    if (fd.isError()) {
+      return Error("Error opening /dev/null:" + fd.error());
+    }
+    ::dup2(fd.get(), child.get().in().get());
+    os::close(fd.get());
+  }
+
+  waitpid(child.get().pid(), NULL, 0);
+  string output = process::io::read(child.get().out().get()).get();
+  LOG(INFO) << "Got response from " << path << ": " << output;
+
+  Try<JSON::Object> jsonOutput_ = JSON::parse<JSON::Object>(output);
+  if (jsonOutput_.isError()) {
+    return Error(
+        "Error parsing output '" + output + "' to JSON string" +
+        jsonOutput_.error());
+  }
+  JSON::Object jsonOutput = jsonOutput_.get();
+
+  Result<JSON::Value> error = jsonOutput.find<JSON::Value>("error");
+  if (error.isSome() && !error.get().is<JSON::Null>()) {
+    return Error(path + " returned error: " + stringify(error.get()));
+  }
+
+  // Protobuf can't parse JSON "null" values; remove error from the object.
+  jsonOutput.values.erase("error");
+
+  Try<OutProto> result = protobuf::parse<OutProto>(jsonOutput);
+  if (result.isError()) {
+    return Error(
+        "Error parsing output '" + output + "' to Protobuf" + result.error());
+  }
+
+  return result;
+}
 
 
 Try<Isolator*> CalicoIsolatorProcess::create(const Parameters& parameters)
 {
-  std::string ipamPath = "";
+  string ipamClientPath;
+  string isolatorClientPath;
   foreach (const Parameter& parameter, parameters.parameter()) {
-    if (parameter.key() == ipamKey) {
-      ipamPath = parameter.value();
+    if (parameter.key() == ipamClientKey) {
+      ipamClientPath = parameter.value();
+    } else if (parameter.key() == isolatorClientKey) {
+      isolatorClientPath = parameter.value();
     }
   }
-  if (ipamPath == "") {
+  if (ipamClientPath.empty()) {
     LOG(WARNING) << "IPAM path not specified";
     return Error("IPAM path not specified.");
   }
   return new CalicoIsolator(process::Owned<CalicoIsolatorProcess>(
-      new CalicoIsolatorProcess(ipamPath, parameters)));
+      new CalicoIsolatorProcess(
+          ipamClientPath, isolatorClientPath, parameters)));
+}
+
+
+CalicoIsolatorProcess::CalicoIsolatorProcess(
+    const std::string& ipamClientPath_,
+    const std::string& isolatorClientPath_,
+    const Parameters& parameters_)
+  : ipamClientPath(ipamClientPath_),
+    isolatorClientPath(isolatorClientPath_),
+    parameters(parameters_)
+{
+  Try<string> result = net::getHostname(self().address.ip);
+  if (result.isError()) {
+    LOG(FATAL) << "Failed to get hostname: " << result.error();
+  }
+  hostname = result.get();
 }
 
 
@@ -103,55 +195,53 @@ process::Future<Option<ContainerPrepareInfo>> CalicoIsolatorProcess::prepare(
     const std::string& directory,
     const Option<std::string>& user)
 {
-  LOG(INFO) << "CalicoIsolator::prepare";
+  LOG(INFO) << "CalicoIsolator::prepare for container: " << containerId;
 
-  std::string ipAddress = "auto";
-  std::string profile = "none";
-  foreach (const Environment_Variable& var,
-      executorInfo.command().environment().variables()) {
-    LOG(INFO) << "ENV: " << var.name() << "=" << var.value();
-    if (var.name() == "CALICO_IP") {
-      ipAddress = var.value();
-    }
-    else if (var.name() == "CALICO_PROFILE") {
-      profile = var.value();
-    }
+  if (!executorNetgroups->contains(executorInfo.executor_id())) {
+    return Failure(
+        "netgroup label not found for executor: " +
+        executorInfo.executor_id().value());
   }
 
-  if (ipAddress == "auto") {
-    std::vector<std::string> argv(3);
-    argv[0] = "python";
-    argv[1] = ipamPath;
-    argv[2] = "assign_ipv4";
-    Try<process::Subprocess> child = process::subprocess(
-        pythonPath,
-        argv,
-        process::Subprocess::PIPE(),
-        process::Subprocess::PIPE(),
-        process::Subprocess::PIPE());
-    CHECK_SOME(child);
-    waitpid(child.get().pid(), NULL, 0);
-    ipAddress = process::io::read(child.get().out().get()).get();
-    LOG(INFO) << "Got IP " << ipAddress << " from IPAM.";
+  vector<string> netgroups =
+    strings::tokenize((*executorNetgroups)[executorInfo.executor_id()], ",");
+
+  IPAMRequestIPMessage ipamMessage;
+  IPAMRequestIPMessage::Args* ipamArgs = ipamMessage.mutable_args();
+  ipamArgs->set_hostname(hostname);
+  ipamArgs->set_num_ipv4(1);
+  ipamArgs->set_uid(UUID::random().toString());
+
+  foreach (const string& netgroup, netgroups) {
+    ipamArgs->add_netgroups(netgroup);
   }
 
-  LOG(INFO) << "LIBPROCESS_IP=" << ipAddress;
+  if (netgroups.size() == 0) {
+    LOG(INFO) << "No netgroups assigned";
+    //TODO(kapil): Should we assign a "default" netgroup here?
+  }
+
+  LOG(INFO) << "Sending IP request command to IPAM";
+  Try<IPAMResponse> response =
+    runCommand<IPAMRequestIPMessage, IPAMResponse>(ipamClientPath, ipamMessage);
+  if (response.isError()) {
+    return Failure("Error allocating IP from IPAM: " + response.error());
+  } else if (response.get().ipv4().size() == 0) {
+    return Failure("No IPv4 addresses received from IPAM.");
+  }
+
+  LOG(INFO) << "Got IP " << response.get().ipv4(0) << " from IPAM.";
 
   ContainerPrepareInfo prepareInfo;
 
   Environment::Variable* variable =
     prepareInfo.mutable_environment()->add_variables();
   variable->set_name("LIBPROCESS_IP");
-  variable->set_value(ipAddress);
+  variable->set_value(response.get().ipv4(0));
 
-  foreach (const Parameter& parameter, parameters.parameter()) {
-    if (parameter.key() == initializationKey) {
-      prepareInfo.add_commands()->set_value(parameter.value());
-    }
-  }
-
-  (*infos)[containerId] = new Info(ipAddress, profile);
-  (*executors)[executorInfo.executor_id()] = containerId;
+  (*infos)[containerId] =
+    new Info(response.get().ipv4(0), netgroups, ipamArgs->uid());
+  (*executorContainerIds)[executorInfo.executor_id()] = containerId;
 
   return prepareInfo;
 }
@@ -161,22 +251,29 @@ process::Future<Nothing> CalicoIsolatorProcess::isolate(
     const ContainerID& containerId,
     pid_t pid)
 {
+  if (!infos->contains(containerId)) {
+    LOG(ERROR) << "Unknown container id: " << containerId;
+    return Failure("Unknown container id: " + containerId.value());
+  }
   const Info* info = (*infos)[containerId];
-  foreach (const Parameter& parameter, parameters.parameter()) {
-    if (parameter.key() == isolateKey) {
-      std::vector<std::string> argv(7);
-      argv[0] = "python";
-      argv[1] = parameter.value();
-      argv[2] = "isolate";
-      argv[3] = stringify(pid);
-      argv[4] = containerId.value();
-      argv[5] = stringify(info->ipAddress.get());
-      argv[6] = stringify(info->profile.get());
-      Try<process::Subprocess> child = process::subprocess(pythonPath, argv);
-      CHECK_SOME(child);
-      waitpid(child.get().pid(), NULL, 0);
-      break;
-    }
+
+  IsolatorIsolateMessage isolatorMessage;
+  IsolatorIsolateMessage::Args* isolatorArgs = isolatorMessage.mutable_args();
+  isolatorArgs->set_hostname(hostname);
+  isolatorArgs->set_container_id(containerId.value());
+  isolatorArgs->set_pid(pid);
+  isolatorArgs->add_ipv4_addrs(info->ipAddress);
+  // isolatorArgs->add_ipv6_addrs();
+  foreach (const string& netgroup, info->netgroups) {
+    isolatorArgs->add_netgroups(netgroup);
+  }
+
+  LOG(INFO) << "Sending isolate command to Isolator";
+  Try<IsolatorResponse> response =
+    runCommand<IsolatorIsolateMessage, IsolatorResponse>(
+        isolatorClientPath, isolatorMessage);
+  if (response.isError()) {
+    return Failure("Error running isolate command: " + response.error());
   }
   return Nothing();
 }
@@ -189,20 +286,30 @@ process::Future<Nothing> CalicoIsolatorProcess::cleanup(
     LOG(WARNING) << "Ignoring cleanup for unknown container " << containerId;
     return Nothing();
   }
-  infos->erase(containerId);
-  foreach (const Parameter& parameter, parameters.parameter()) {
-    if (parameter.key() == cleanupKey) {
-      std::vector<std::string> argv(4);
-      argv[0] = "python";
-      argv[1] = parameter.value();
-      argv[2] = "cleanup";
-      argv[3] = containerId.value();
-      Try<process::Subprocess> child = process::subprocess(pythonPath, argv);
-      CHECK_SOME(child);
-      waitpid(child.get().pid(), NULL, 0);
-      break;
-    }
+
+  const Info* info = (*infos)[containerId];
+
+  IPAMReleaseIPMessage ipamMessage;
+  ipamMessage.mutable_args()->add_ips(info->ipAddress);
+
+  LOG(INFO) << "Requesting IPAM to release IP: " << info->ipAddress;
+  Try<IPAMResponse> response =
+    runCommand<IPAMReleaseIPMessage, IPAMResponse>(ipamClientPath, ipamMessage);
+  if (response.isError()) {
+    return Failure("Error releasing IP from IPAM: " + response.error());
   }
+
+  IsolatorCleanupMessage isolatorMessage;
+  isolatorMessage.mutable_args()->set_hostname(hostname);
+  isolatorMessage.mutable_args()->set_container_id(containerId.value());
+
+  Try<IsolatorResponse> isolatorResponse =
+    runCommand<IsolatorCleanupMessage, IsolatorResponse>(
+        isolatorClientPath, isolatorMessage);
+  if (isolatorResponse.isError()) {
+    return Failure("Error doing cleanup:" + isolatorResponse.error());
+  }
+
   return Nothing();
 }
 
@@ -213,8 +320,10 @@ static Isolator* createCalicoIsolator(const Parameters& parameters)
 
   if (infos == NULL) {
     infos = new hashmap<ContainerID, Info*>();
-    CHECK(executors == NULL);
-    executors = new hashmap<ExecutorID, ContainerID>();
+    CHECK(executorContainerIds == NULL);
+    executorContainerIds = new hashmap<ExecutorID, ContainerID>();
+    CHECK(executorNetgroups == NULL);
+    executorNetgroups = new hashmap<ExecutorID, string>();
   }
 
   Try<Isolator*> result = CalicoIsolatorProcess::create(parameters);
@@ -230,6 +339,25 @@ static Isolator* createCalicoIsolator(const Parameters& parameters)
 // TODO(karya): Use the hooks for Task Status labels.
 class CalicoHook : public Hook
 {
+public:
+  virtual Result<Labels> slaveRunTaskLabelDecorator(
+      const TaskInfo& taskInfo,
+      const ExecutorInfo& executorInfo,
+      const FrameworkInfo& frameworkInfo,
+      const SlaveInfo& slaveInfo)
+  {
+    LOG(INFO) << "CalicoHook:: run task label decorator";
+    if (taskInfo.has_labels()) {
+      foreach (const Label& label, taskInfo.labels().labels()) {
+        if (label.key() == netgroupsLabelKey) {
+          (*executorNetgroups)[executorInfo.executor_id()] = label.value();
+          LOG(INFO) << "Label: <" << label.key() << ":" << label.value() << ">";
+        }
+      }
+    }
+    return None();
+  }
+
   virtual Result<Labels> slaveTaskStatusLabelDecorator(
       const FrameworkID& frameworkId,
       const TaskStatus& status)
@@ -242,22 +370,18 @@ class CalicoHook : public Hook
     }
 
     const ExecutorID executorId = status.executor_id();
-    if (!executors->contains(executorId)) {
+    if (!executorContainerIds->contains(executorId)) {
       LOG(WARNING) << "CalicoHook:: no valid container id for: " << executorId;
       return None();
     }
 
-    const ContainerID containerId = executors->at(executorId);
+    const ContainerID containerId = executorContainerIds->at(executorId);
     if (infos == NULL || !infos->contains(containerId)) {
       LOG(WARNING) << "CalicoHook:: no valid infos for: " << containerId;
       return None();
     }
 
     const Info* info = (*infos)[containerId];
-    if (info->ipAddress.isNone()) {
-      LOG(WARNING) << "CalicoHook:: no valid IP address";
-      return None();
-    }
 
     Labels labels;
     if (status.has_labels()) {
@@ -267,7 +391,7 @@ class CalicoHook : public Hook
     // Set IPAddress label.
     Label* label = labels.add_labels();
     label->set_key(ipAddressLabelKey);
-    label->set_value(info->ipAddress.get());
+    label->set_value(info->ipAddress);
 
     LOG(INFO) << "CalicoHook:: added label "
               << label->key() << ":" << label->value();

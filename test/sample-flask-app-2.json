@@ -3,12 +3,8 @@
     "cmd": "cd sjcflask && python sjc.py",
     "cpus": 0.1,
     "mem": 128.0,
-    "env": {
-        "CALICO_IP": "192.168.0.3",
-        "CALICO_PROFILE": "flask"
-    },
     "labels": {
-        "calico": "testcalico"
+        "network_isolator.netgroups": "default"
     },
     "instances": 1,
     "ports": [5001],

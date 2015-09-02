@@ -14,11 +14,11 @@ RUN wget https://dl.dropboxusercontent.com/u/4550074/mesos/mesos-dns+50fc45a9 -O
 ADD ./isolator /isolator/isolator/
 ADD ./m4 /isolator/m4/
 ADD ./bootstrap /isolator/
-ADD ./calico_isolator.py /isolator/
+ADD ./calico_isolator /isolator/
 ADD ./configure.ac /isolator/
 ADD ./Makefile.am /isolator/
 ADD ./requirements.txt /isolator/
-ADD http://downloads.mesosphere.io/demo/calico-node/v0.5.1/calico-node-v0.5.1.tar /isolator/
+COPY ./calico-node-v0.5.4.tar /isolator/
 
 WORKDIR /isolator
 
@@ -29,7 +29,7 @@ RUN ./bootstrap && \
     mkdir build && \
     cd build && \
     export LD_LIBRARY_PATH=LD_LIBRARY_PATH:/usr/local/lib && \
-    ../configure --with-mesos-build-dir=/mesos/build --with-mesos-root=/mesos && \
+    ../configure --with-mesos=/usr/local --with-protobuf=/usr && \
     make all
 
 # Add python module requirements
@@ -58,7 +58,7 @@ VOLUME /var/lib/docker
 ###################
 # Calico
 ###################
-RUN wget https://github.com/Metaswitch/calico-docker/releases/download/v0.5.1/calicoctl && \
+RUN wget https://github.com/Metaswitch/calico-docker/releases/download/v0.5.4/calicoctl && \
     chmod +x calicoctl && \
     mv calicoctl /usr/local/bin/
 

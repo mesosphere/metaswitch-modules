@@ -1,7 +1,7 @@
 #!/bin/sh
 IP=`ip addr | grep 'global eth0' | awk '{print $2}' | cut -f1  -d'/'`
 ETCD_IP=`getent hosts etcd | awk '{ print $2 }'`
-docker load -i /isolator/calico-node-v0.5.1.tar
+docker load -i /isolator/calico-node-v0.5.4.tar
 export ETCD_AUTHORITY=$ETCD_IP:4001
 exec 2>&1
-exec calicoctl node --ip=$IP --detach=false --node-image=calico/node:v0.5.1
+exec calicoctl node --ip=$IP --detach=false --node-image=calico/node:v0.5.4

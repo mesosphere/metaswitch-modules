@@ -1,0 +1,44 @@
+calico-node-*.tar
+# First, ignore yourself.
+.gitignore
+
+# Files created by ./bootstrap.
+.reviewboardrc
+Makefile.in
+aclocal.m4
+ar-lib
+autom4te.cache
+compile
+config.guess
+config.sub
+configure
+depcomp
+install-sh
+libtool.m4
+ltmain.sh
+ltoptions.m4
+ltsugar.m4
+ltversion.m4
+lt~obsolete.m4
+missing
+
+*.pyc
+
+# Recommended build directory.
+/build/
+
+# OSX Resource
+.DS_Store
+
+# CTags
+.tags
+.tags_sorted_by_file
+
+# Sublime
+*.sublime-project
+*.sublime-workspace
+
+# CLion
+.idea
+CMakeLists.txt
+.reviewboardrc
