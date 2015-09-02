@@ -8,9 +8,8 @@
       "cpus": 0.1,
       "mem": 64.0,
       "ports": [],
-      "env": {
-        "CALICO_IP": "auto",
-        "CALICO_PROFILE": "star-1"
+      "labels": {
+      "network_isolator.netgroups": "star-1"
       }
     },
     {
@@ -20,9 +19,8 @@
       "cpus": 0.1,
       "mem": 64.0,
       "ports": [],
-      "env": {
-        "CALICO_IP": "auto",
-        "CALICO_PROFILE": "star-1"
+      "labels": {
+        "network_isolator.netgroups": "star-1"
       }
     },
     {
@@ -32,9 +30,8 @@
       "cpus": 0.1,
       "mem": 64.0,
       "ports": [],
-      "env": {
-        "CALICO_IP": "auto",
-        "CALICO_PROFILE": "star-2"
+      "labels": {
+        "network_isolator.netgroups": "star-2"
       }
     },
     {
@@ -44,9 +41,8 @@
       "cpus": 0.1,
       "mem": 64.0,
       "ports": [],
-      "env": {
-        "CALICO_IP": "auto",
-        "CALICO_PROFILE": "star-2"
+      "labels": {
+        "network_isolator.netgroups": "star-2"
       }
     },
     {
@@ -59,13 +55,9 @@
       "cpus": 0.2,
       "mem": 64.0,
       "ports": [],
-      "env": {
-          "CALICO_IP": "192.168.255.252",
-          "CALICO_PROFILE": "star-1,star-2,public"
-      },
-      "constraints": [
-        ["public", "LIKE", "true"]
-      ]
+      "labels": {
+        "network_isolator.netgroups": "star-1,star-2,public"
+      }
     }
   ]
 }
