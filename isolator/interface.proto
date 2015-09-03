@@ -18,6 +18,21 @@ message IPAMRequestIPMessage {
 }
 
 
+message IPAMReserveIPMessage {
+  message Args {
+    required string hostname = 1;
+    repeated string ipv4_addrs = 2;
+    repeated string ipv6_addrs = 3;
+    required string uid = 4;
+    repeated string netgroups = 5;
+    optional mesos.Labels labels = 6;
+  }
+
+  required string command = 1 [default = "allocate"];
+  required Args args = 2;
+}
+
+
 message IPAMReleaseIPMessage {
   message Args {
     repeated string ips = 1; // OK to mix IPv4 and IPv6.

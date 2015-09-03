@@ -81,11 +81,13 @@ const char* isolatorClientKey = "isolator_command";
 const char* pythonPath = "/usr/bin/python";
 const char* ipAddressLabelKey = "MesosContainerizer.NetworkSettings.IPAddress";
 
+const char* ipLabelKey = "network_isolator.ip";
 const char* netgroupsLabelKey = "network_isolator.netgroups";
 
 hashmap<ContainerID, Info*> *infos = NULL;
 hashmap<ExecutorID, ContainerID> *executorContainerIds = NULL;
 hashmap<ExecutorID, string> *executorNetgroups = NULL;
+hashmap<ExecutorID, string> *executorIPs = NULL;
 
 
 template <typename InProto, typename OutProto>
@@ -203,44 +205,70 @@ process::Future<Option<ContainerPrepareInfo>> NetworkIsolatorProcess::prepare(
         executorInfo.executor_id().value());
   }
 
+  string ipAddress;
+  string uid = UUID::random().toString();
+
   vector<string> netgroups =
     strings::tokenize((*executorNetgroups)[executorInfo.executor_id()], ",");
-
-  IPAMRequestIPMessage ipamMessage;
-  IPAMRequestIPMessage::Args* ipamArgs = ipamMessage.mutable_args();
-  ipamArgs->set_hostname(hostname);
-  ipamArgs->set_num_ipv4(1);
-  ipamArgs->set_uid(UUID::random().toString());
-
-  foreach (const string& netgroup, netgroups) {
-    ipamArgs->add_netgroups(netgroup);
-  }
-
   if (netgroups.size() == 0) {
     LOG(INFO) << "No netgroups assigned";
     //TODO(kapil): Should we assign a "default" netgroup here?
   }
 
-  LOG(INFO) << "Sending IP request command to IPAM";
-  Try<IPAMResponse> response =
-    runCommand<IPAMRequestIPMessage, IPAMResponse>(ipamClientPath, ipamMessage);
-  if (response.isError()) {
-    return Failure("Error allocating IP from IPAM: " + response.error());
-  } else if (response.get().ipv4().size() == 0) {
-    return Failure("No IPv4 addresses received from IPAM.");
-  }
+  if (executorIPs->contains(executorInfo.executor_id())) {
+    ipAddress = (*executorIPs)[executorInfo.executor_id()];
 
-  LOG(INFO) << "Got IP " << response.get().ipv4(0) << " from IPAM.";
+    IPAMReserveIPMessage ipamMessage;
+    IPAMReserveIPMessage::Args* ipamArgs = ipamMessage.mutable_args();
+    ipamArgs->set_hostname(hostname);
+    ipamArgs->add_ipv4_addrs(ipAddress);
+    ipamArgs->set_uid(uid);
+
+    foreach (const string& netgroup, netgroups) {
+      ipamArgs->add_netgroups(netgroup);
+    }
+
+    LOG(INFO) << "Sending IP request command to IPAM";
+    Try<IPAMResponse> response =
+      runCommand<IPAMReserveIPMessage, IPAMResponse>(
+          ipamClientPath, ipamMessage);
+    if (response.isError()) {
+      return Failure("Error reserving IPs with IPAM: " + response.error());
+    }
+
+    LOG(INFO) << "IP " << ipAddress << " reserved with IPAM";
+  } else {
+    IPAMRequestIPMessage ipamMessage;
+    IPAMRequestIPMessage::Args* ipamArgs = ipamMessage.mutable_args();
+    ipamArgs->set_hostname(hostname);
+    ipamArgs->set_num_ipv4(1);
+    ipamArgs->set_uid(uid);
+
+    foreach (const string& netgroup, netgroups) {
+      ipamArgs->add_netgroups(netgroup);
+    }
+
+    LOG(INFO) << "Sending IP request command to IPAM";
+    Try<IPAMResponse> response =
+      runCommand<IPAMRequestIPMessage, IPAMResponse>(ipamClientPath, ipamMessage);
+    if (response.isError()) {
+      return Failure("Error allocating IP from IPAM: " + response.error());
+    } else if (response.get().ipv4().size() == 0) {
+      return Failure("No IPv4 addresses received from IPAM.");
+    }
+
+    LOG(INFO) << "Got IP " << response.get().ipv4(0) << " from IPAM.";
+    ipAddress = response.get().ipv4(0);
+  }
 
   ContainerPrepareInfo prepareInfo;
 
   Environment::Variable* variable =
     prepareInfo.mutable_environment()->add_variables();
   variable->set_name("LIBPROCESS_IP");
-  variable->set_value(response.get().ipv4(0));
+  variable->set_value(ipAddress);
 
-  (*infos)[containerId] =
-    new Info(response.get().ipv4(0), netgroups, ipamArgs->uid());
+  (*infos)[containerId] = new Info(ipAddress, netgroups, uid);
   (*executorContainerIds)[executorInfo.executor_id()] = containerId;
 
   return prepareInfo;
@@ -324,6 +352,8 @@ static Isolator* createNetworkIsolator(const Parameters& parameters)
     executorContainerIds = new hashmap<ExecutorID, ContainerID>();
     CHECK(executorNetgroups == NULL);
     executorNetgroups = new hashmap<ExecutorID, string>();
+    CHECK(executorIPs == NULL);
+    executorIPs = new hashmap<ExecutorID, string>();
   }
 
   Try<Isolator*> result = NetworkIsolatorProcess::create(parameters);
@@ -351,6 +381,10 @@ public:
       foreach (const Label& label, taskInfo.labels().labels()) {
         if (label.key() == netgroupsLabelKey) {
           (*executorNetgroups)[executorInfo.executor_id()] = label.value();
+          LOG(INFO) << "Label: <" << label.key() << ":" << label.value() << ">";
+        }
+        if (label.key() == ipLabelKey) {
+          (*executorIPs)[executorInfo.executor_id()] = label.value();
           LOG(INFO) << "Label: <" << label.key() << ":" << label.value() << ">";
         }
       }
