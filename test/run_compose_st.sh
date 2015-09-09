@@ -1,5 +1,6 @@
 #!/bin/bash
 docker-compose -p netmodules up -d
+docker-compose scale slave=2
 cd `dirname $0`
 
 # Wait for the marathon container to come up
@@ -12,8 +13,8 @@ sleep 90
 
 curl -o state.json localhost:5050/master/state.json
 
-docker exec netmodules_slave1_1 ping -c 4 192.168.0.0
-docker exec netmodules_slave1_1 ping -c 4 192.168.1.0
+docker exec netmodules_slave_1 ping -c 4 192.168.0.0
+docker exec netmodules_slave_1 ping -c 4 192.168.1.0
 
-docker exec netmodules_slave2_1 ping -c 4 192.168.0.0
-docker exec netmodules_slave2_1 ping -c 4 192.168.1.0
+docker exec netmodules_slave_2 ping -c 4 192.168.0.0
+docker exec netmodules_slave_2 ping -c 4 192.168.1.0
