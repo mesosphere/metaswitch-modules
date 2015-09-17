@@ -16,8 +16,15 @@ calico/calico-node-$(CALICO_NODE_VERSION).tar:
 	docker pull calico/node:$(CALICO_NODE_VERSION)
 	docker save -o calico/calico-node-$(CALICO_NODE_VERSION).tar calico/node:$(CALICO_NODE_VERSION)
 
-st: images
+clean:
 	docker-compose kill
 	docker-compose rm --force
 	docker-compose pull
+
+
+st: clean images
 	test/run_compose_st.sh
+
+framework: clean images
+	framework/run_framework_st.sh
+	

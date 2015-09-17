@@ -16,72 +16,85 @@
 
 import os
 import sys
+import errno
+import logging
+import logging.handlers
 import mesos.interface
 from mesos.interface import mesos_pb2
 import mesos.native
 
+
 TASK_CPUS = 1
 TASK_MEM = 128
+LOGFILE = '/var/log/calico/test_framework.log'
 
 
-class PingTask(object):
-    def __init__(self, target, ip=None, state=None, id=None):
-        self.target = target
+_log = logging.getLogger("TestFramework")
+
+def _setup_logging(logfile):
+    # Ensure directory exists.
+    try:
+        os.makedirs(os.path.dirname(LOGFILE))
+    except OSError as oserr:
+        if oserr.errno != errno.EEXIST:
+            raise
+
+    _log.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(
+                '%(asctime)s [%(levelname)s] %(name)s %(lineno)d: %(message)s')
+    handler = logging.handlers.TimedRotatingFileHandler(logfile,
+                                                        when='D',
+                                                        backupCount=10)
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(formatter)
+    _log.addHandler(handler)
+
+    # Create Console Logger
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(formatter)
+    _log.addHandler(handler)
+
+
+class Task(object):
+    """
+    Base Class for storing data about a Mesos task.
+    Implementations of tasks should superclass this class.
+    """
+    def __init__(self, ip=None, netgroup="default"):
         self.ip = ip
-        self.state = state
-        self.id = id
+        self.netgroup = netgroup
+        self.state = mesos_pb2.TASK_STAGING
+        self.task_id = None
+        self.executor_id = None
+        self.task_id = None
 
-
-class SleepTask(object):
-    def __init__(self, ip=None, state=None, id=None):
-        self.ip = ip
-        self.state = state
-        self.id = id
-
-
-class State():
-    LaunchSleepTasks, LaunchPingTasks = range(0,2)
-
-
-class TestScheduler(mesos.interface.Scheduler):
-    def __init__(self, implicitAcknowledgements):
-        self.implicitAcknowledgements = implicitAcknowledgements
-        self.taskData = {}
-        self.tasksLaunched = 0
-        self.tasksFinished = 0
-        self.messagesSent = 0
-        self.messagesReceived = 0
-        self.tasks = [SleepTask(ip="192.168.1.0", state=None, id=None),
-                      PingTask(ip="192.168.1.1", target="192.168.1.0", state=None, id=None),
-                      PingTask(ip="192.168.1.2", target="192.168.1.0", state=None, id=None)]
-        self.state = State.LaunchSleepTasks
-
-
-    def registered(self, driver, frameworkId, masterInfo):
-        print "Registered with framework ID %s" % frameworkId.value
-
-
-    def _generate_executor(self, tid):
+    def as_new_mesos_task(self):
         """
-        Helper method to generate a new mesos executor.
-        Each executor will run in its own namespace.
+        Create a new mesos task populated by the data currently stored in
+        this Task.
         """
-        # Get a new executor for this task
-        executor = mesos_pb2.ExecutorInfo()
-        executor.executor_id.value = "execute Task %s" % tid
-        executor.command.value = "python /framework/test_executor.py"
-        executor.name = "Test Executor for Task %s" % tid
-        executor.source = "python_test"
+        assert self.task_id, "Calico task must be assigned a task_id"
+        assert self.slave_id, "Calico task must be assigned a slave_id"
 
-        return executor
+        def _generate_executor(self):
+            """
+            Helper method to generate a new mesos executor.
+            Each executor will run in its own namespace.
+            """
+            # Get a new executor for this task
+            executor = mesos_pb2.ExecutorInfo()
+            executor.executor_id.value = "execute Task %s" % self.task_id
+            executor.command.value = "python /framework/test_executor.py"
+            executor.name = "Test Executor for Task %s" % self.task_id
+            executor.source = "python_test"
 
+            return executor
 
-    def _generate_task(self, tid, slave_id, calico_task):
         task = mesos_pb2.TaskInfo()
-        task.task_id.value = str(tid)
-        calico_task.id = task.task_id.value
-        task.slave_id.value = slave_id
-
+        task.name = "unnamed task"
+        task.task_id.value = self.task_id
+        task.slave_id.value = self.slave_id
 
         cpus = task.resources.add()
         cpus.name = "cpus"
@@ -96,36 +109,136 @@ class TestScheduler(mesos.interface.Scheduler):
         # Netgroup label
         netgroup_label = task.labels.labels.add()
         netgroup_label.key = "network_isolator.netgroups"
-        netgroup_label.value = "the_only_netgroup"
+        netgroup_label.value = self.netgroup
 
         # Isolator IP label
         ip_label = task.labels.labels.add()
         ip_label.key = "network_isolator.ip"
-        ip_label.value = calico_task.ip
+        ip_label.value = self.ip
 
-        if type(calico_task) == SleepTask:
-            task.name = "sleeping at %s" % calico_task.ip
-            task_type_label = task.labels.labels.add()
-            task_type_label.key = "task_type"
-            task_type_label.value = "sleep"
-        elif type(calico_task) == PingTask:
-            task.name = "pinging %s from %s" % (calico_task.target, calico_task.ip)
-            task_type_label = task.labels.labels.add()
-            task_type_label.key = "task_type"
-            task_type_label.value = "ping"
-
-            # Add the target label
-            target_label = task.labels.labels.add()
-            target_label.key = "target"
-            target_label.value = calico_task.target
+        # create the executor
+        task.executor.MergeFrom(_generate_executor(self))
+        self.executor_id = task.executor.executor_id.value
 
         return task
 
+    @property
+    def as_name(self):
+        """
+        Give a nice-name to identify the task
+        """
+        raise NotImplementedError
 
-    def resourceOffers(self, driver, offers):
+
+class PingTask(Task):
+    """
+    Subclass of Task which attempts to ping a target.
+    This Task will report a failure if it cannot ping the target.
+    """
+    def __init__(self, target, *args, **kwargs):
+        super(PingTask, self).__init__(*args, **kwargs)
+        self.target = target
+
+    def as_new_mesos_task(self):
         """
-        Fill up offers with all sleep tasks
+        Extends the basic mesos task settings by adding the target field,
+        as well as a custom label called "task_type" which the executor will
+        read to identify the task type.
         """
+        task = super(PingTask, self).as_new_mesos_task()
+        task.name = self.task_name
+
+        task_type_label = task.labels.labels.add()
+        task_type_label.key = "task_type"
+        task_type_label.value = "ping"
+
+        target_label = task.labels.labels.add()
+        target_label.key = "target"
+        target_label.value = self.target
+
+        return task
+
+    @property
+    def task_name(self):
+        """
+        Give a nice-name to identify the task
+        """
+        return "ping %s from %s" % (self.target, self.ip)
+
+class SleepTask(Task):
+    def as_new_mesos_task(self):
+        """
+        Extends the basic mesos task settings by adding  a custom label called "task_type" which the executor will
+        read to identify the task type.
+        """
+        task = super(SleepTask, self).as_new_mesos_task()
+
+        task_type_label = task.labels.labels.add()
+        task_type_label.key = "task_type"
+        task_type_label.value = "sleep"
+
+        return task
+
+    @property
+    def task_name(self):
+        """
+        Give a nice-name to identify the task
+        """
+        return "listen-at-%s" % self.ip
+
+
+class State():
+    LaunchSleepTasks, LaunchPingTasks = range(0,2)
+
+
+class TestScheduler(mesos.interface.Scheduler):
+    """
+    This sample Scheduler implements a Mesos Framework powered by Calico.
+
+    1. Launch all SleepTasks
+    2. Wait for SleepTasks to report as RUNNING
+    3. Launch all PingTasks
+    4.
+    """
+    def __init__(self, implicitAcknowledgements):
+        self.implicitAcknowledgements = implicitAcknowledgements
+        """
+        Flag to disable framework ACK messages
+        """
+
+        self.tasksLaunched = 0
+        """
+        Counter to track number of tasks launched
+        """
+
+        self.messagesSent = 0
+        """
+
+        """
+
+        self.messagesReceived = 0
+        self.tasks = [SleepTask(ip="192.168.1.0"),
+                      PingTask(ip="192.168.1.1", target="192.168.1.0"),
+                      PingTask(ip="192.168.1.2", target="192.168.1.0")]
+        """
+        The source-of-truth for task information. Whenever the framework receives
+        an update or modifies configuration of tasks in mesos in any way, it should
+        immediately update the information stored here.
+        """
+
+        self.state = State.LaunchSleepTasks
+
+    @property
+    def tasksFinished(self):
+        """
+        Counter to track number of tasks complete.
+        """
+        return len([task for task in self.tasks if task.state is mesos_pb2.TASK_FINISHED])
+
+    def registered(self, driver, frameworkId, masterInfo):
+        _log.info("REGISTERED: with framework ID %s" % frameworkId.value)
+
+    def calculate_offer(self, offers):
         # Calculate how juicy these offers are
         availableCpus = 0
         availableMem = 0
@@ -138,55 +251,56 @@ class TestScheduler(mesos.interface.Scheduler):
                 elif resource.name == "mem":
                     offerMem += resource.scalar.value
 
-            print "Received offer %s with cpus: %s and mem: %s" \
-                  % (offer.id.value, offerCpus, offerMem)
+            _log.debug("\tReceived Offer %s with cpus: %s and mem: %s" \
+                  % (offer.id.value, offerCpus, offerMem))
 
             availableCpus += offerCpus
             availableMem += offerMem
+        return availableCpus, availableMem
 
+    def resourceOffers(self, driver, offers):
+        """
+        Triggered when the framework is offered resources by mesos.
+        This launches remaining tasks corresponding with the current self.state
+        of the framework.
+        """
+        _log.info("RECEIVED_OFFER")
         if self.state == State.LaunchSleepTasks:
-            print "Got offer during sleep task phase"
             launch_type = SleepTask
         elif self.state == State.LaunchPingTasks:
-            print "Got offer during ping task phase"
             launch_type = PingTask
+        else:
+            _log.error("system ")
 
         # Get all tasks pending launch
         launch_tasks = [calico_task for calico_task in self.tasks if \
                         type(calico_task) == launch_type and \
-                        calico_task.state is None]
+                        calico_task.state is mesos_pb2.TASK_STAGING]
         # If there's not task pending launch, reject the offers - we're waiting for them to come up
         if not launch_tasks:
-            print "All tasks launched. Rejecting offer"
+            _log.info("All tasks launched. Rejecting offer")
             for offer in offers:
                 driver.declineOffer(offer.id)
             return
         else:
+            availableCpus, availableMem = self.calculate_offer(offers)
             prepared_tasks = []
+            # Get the slave_id from one of the offers, they should all be the same
+            slave_id = offers[0].slave_id.value
+            # loop through calico_tasks, prepare as many as possible for launch
+            # as mesos_tasks until we run out of resources within these offers
             for calico_task in launch_tasks:
                 if availableCpus >= TASK_CPUS and availableMem >= TASK_MEM:
-                    tid = self.tasksLaunched
                     self.tasksLaunched += 1
-
-                    executor = self._generate_executor("execute %s" % tid)
-
-                    # TODO: not sure if this is coshire
+                    calico_task.task_id = str(self.tasksLaunched)
+                    calico_task.slave_id = slave_id
                     calico_task.state = mesos_pb2.TASK_STAGING
 
-                    print "Launching SLEEP task %d using offer %s" \
-                              % (tid, offer.id.value)
+                    _log.info("\tLaunching Task %s (%s)" \
+                              % (calico_task.task_id, calico_task.task_name))
 
-                    mesos_task = self._generate_task(tid=tid,
-                                              slave_id=offer.slave_id.value,
-                                              calico_task = calico_task)
-
-                    mesos_task.executor.MergeFrom(executor)
-
+                    mesos_task = calico_task.as_new_mesos_task()
                     prepared_tasks.append(mesos_task)
-
-                    # TODO: deprecate this
-                    self.taskData[mesos_task.task_id.value] = (
-                        offer.slave_id, mesos_task.executor.executor_id)
 
                     availableCpus -= TASK_CPUS
                     availableMem -= TASK_MEM
@@ -202,83 +316,89 @@ class TestScheduler(mesos.interface.Scheduler):
         """
         Run when the Executor sends a status update back to the Framework
         """
-        task_id = update.task_id.value
-        state = update.state
 
-        print "Task %s is in state %s" % \
-            (update.task_id.value, mesos_pb2.TaskState.Name(update.state))
 
         # Find the task which corresponds to the status update
 
-        for task in self.tasks:
-            if task.id == task_id:
-                task.state = state
-                break
+        task_search = [task for task in self.tasks if task.task_id == update.task_id.value]
+        if len(task_search) == 1:
+            calico_task = task_search.pop()
+            calico_task.state = update.state
+        else:
+            _log.error("Received Task Update from Unidentified TaskID: %s" % update.task_id.value)
+            driver.abort()
 
+        _log.info("TASK_UPDATE: Task %s (%s) is in state %s" % \
+            (calico_task.task_id,
+             calico_task.task_name,
+             mesos_pb2.TaskState.Name(calico_task.state)))
 
         if self.state == State.LaunchSleepTasks:
-            if task.state == mesos_pb2.TASK_RUNNING:
+            if calico_task.state == mesos_pb2.TASK_RUNNING:
                 # Received a RUNNING update from one of the launching SleepTasks
                 # Check if all sleep tasks are running
-                unfinished_sleep_tasks = [task for task in self.tasks if type(task) == SleepTask and task.state != mesos_pb2.TASK_RUNNING]
+                unfinished_sleep_tasks = [task for task in self.tasks if \
+                                          type(task) == SleepTask and \
+                                          task.state != mesos_pb2.TASK_RUNNING]
                 if unfinished_sleep_tasks:
-                    print 'Waiting for the remaining %s' % len(unfinished_sleep_tasks)
+                    _log.info('\tWaiting for the remaining %s' % len(unfinished_sleep_tasks))
                 else:
-                    print 'All sleep tasks running. Moving on to Ping Launch'
+                    _log.info('\tAll sleep tasks running. Transitioning to LaunchPingTasks')
                     # Move all ping tasks into the task queue
-                    self.task_queue = [task for task in self.tasks if type(task) == PingTask]
+                    self.task_queue = [task for task in self.tasks if \
+                                       type(task) == PingTask]
                     self.state = State.LaunchPingTasks
             else:
-                print 'Killing framework' % state
+                _log.info('Sleeptask is reporting as %s' % update.state)
                 driver.abort()
 
         elif self.state == State.LaunchPingTasks:
-            if task.state == mesos_pb2.TASK_RUNNING:
+            if calico_task.state == mesos_pb2.TASK_RUNNING:
                 pass
-            elif task.state == mesos_pb2.TASK_FAILED:
-                print "Ping from %s to %s failed" % (task.ip, task.target)
+            elif calico_task.state == mesos_pb2.TASK_FAILED:
+                _log.info("\tPing from %s to %s failed" % (calico_task.ip, calico_task.target))
                 driver.abort()
-            elif task.state == mesos_pb2.TASK_FINISHED:
-                print "Ping task complete!"
+            elif calico_task.state == mesos_pb2.TASK_FINISHED:
+                _log.info("\tPing task complete!")
                 # Check if all ping tasks are complete
-                unfinished_ping_tasks = [task for task in self.tasks if type(task) == PingTask and task.state != mesos_pb2.TASK_RUNNING]
+                unfinished_ping_tasks = [task for task in self.tasks if \
+                                         type(task) == PingTask and \
+                                         task.state != mesos_pb2.TASK_FINISHED]
                 if unfinished_ping_tasks:
-                    print 'Waiting for the remaining %s' % len(unfinished_ping_tasks)
+                    _log.info('\tWaiting for the remaining %s' % len(unfinished_ping_tasks))
                 else:
-                    print 'All ping tests finished succesfully. SUCCCESS!!!!'
+                    _log.info('\tAll ping tests finished succesfully. SUCCCESS!!!!')
             else:
-                print 'unexpected state: %s' % state
+                _log.error('\tunexpected state: %s' % update.state)
                 driver.abort()
 
-
-        print "Task %s is in state %s" % \
-            (update.task_id.value, mesos_pb2.TaskState.Name(update.state))
-
-        # Ensure the binary data came through.
+        # Ensure the ACK came through.
         if update.data != "data with a \0 byte":
-            print "The update data did not match!"
-            print "  Expected: 'data with a \\x00 byte'"
-            print "  Actual:  ", repr(str(update.data))
+            _log.error("The ACK payload did not match!")
+            _log.info("  Expected: 'data with a \\x00 byte'")
+            _log.info("  Actual:  ", repr(str(update.data)))
             sys.exit(1)
 
         if update.state == mesos_pb2.TASK_FINISHED:
-            self.tasksFinished += 1
             if self.tasksFinished == len(self.tasks):
-                print "All %s tasks done, waiting for final framework message" % self.tasksFinished
+                _log.info("All %s tasks done, waiting for final framework message" % self.tasksFinished)
 
-            slave_id, executor_id = self.taskData[update.task_id.value]
-
+            # Send a message to the slave's executor to confirm they're doin OK
             self.messagesSent += 1
+            _log.info("Sending ACK to Executor")
             driver.sendFrameworkMessage(
-                executor_id,
-                slave_id,
+                mesos_pb2.ExecutorID(value=calico_task.executor_id),
+                mesos_pb2.SlaveID(value=calico_task.slave_id),
                 'data with a \0 byte')
 
         if update.state == mesos_pb2.TASK_LOST or \
            update.state == mesos_pb2.TASK_KILLED or \
            update.state == mesos_pb2.TASK_FAILED:
-            print "Aborting because task %s is in unexpected state %s with message '%s'" \
-                % (update.task_id.value, mesos_pb2.TaskState.Name(update.state), update.message)
+            _log.error("Aborting because task %s (%s) is in unexpected state %s with message '%s'" \
+                % (calico_task.task_name,
+                   update.task_id.value,
+                   mesos_pb2.TaskState.Name(update.state),
+                   update.message))
             driver.abort()
 
         # Explicitly acknowledge the update if implicit acknowledgements
@@ -287,28 +407,28 @@ class TestScheduler(mesos.interface.Scheduler):
             driver.acknowledgeStatusUpdate(update)
 
     def frameworkMessage(self, driver, executorId, slaveId, message):
+        _log.info("Received ACK from Executor")
         self.messagesReceived += 1
 
         # The message bounced back as expected.
         if message != "data with a \0 byte":
-            print "The returned message data did not match!"
-            print "  Expected: 'data with a \\x00 byte'"
-            print "  Actual:  ", repr(str(message))
+            _log.error("Executor ACK contains unexpected data")
             sys.exit(1)
-        print "Received message:", repr(str(message))
 
         if self.messagesReceived == len(self.tasks):
             if self.messagesReceived != self.messagesSent:
-                print "Sent", self.messagesSent,
-                print "but received", self.messagesReceived
+                _log.info("Sent %s" % self.messagesSent)
+                _log.info("but received %s" % self.messagesReceived)
                 sys.exit(1)
-            print "All tasks done, and all messages received, exiting"
+            _log.info("All tasks done, and all messages received, exiting")
             driver.stop()
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print "Usage: %s master" % sys.argv[0]
         sys.exit(1)
+
+    _setup_logging(LOGFILE)
 
     framework = mesos_pb2.FrameworkInfo()
     framework.user = "" # Have Mesos fill in the current user.
@@ -317,20 +437,20 @@ if __name__ == "__main__":
     # TODO(vinod): Make checkpointing the default when it is default
     # on the slave.
     if os.getenv("MESOS_CHECKPOINT"):
-        print "Enabling checkpoint for the framework"
+        _log.info("Enabling checkpoint for the framework")
         framework.checkpoint = True
 
     implicitAcknowledgements = 1
     if os.getenv("MESOS_EXPLICIT_ACKNOWLEDGEMENTS"):
-        print "Enabling explicit status update acknowledgements"
+        _log.info("Enabling explicit status update acknowledgements")
         implicitAcknowledgements = 0
 
     if os.getenv("MESOS_AUTHENTICATE"):
-        print "Enabling authentication for the framework"
+        _log.info("Enabling authentication for the framework")
 
         if not os.getenv("DEFAULT_PRINCIPAL"):
-            print "Expecting authentication principal in the environment"
-            sys.exit(1);
+            _log.info("Expecting authentication principal in the environment")
+            sys.exit(1)
 
         credential = mesos_pb2.Credential()
         credential.principal = os.getenv("DEFAULT_PRINCIPAL")
