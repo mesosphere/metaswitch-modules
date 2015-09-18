@@ -64,7 +64,7 @@ class Task(object):
     def __init__(self, ip=None, netgroup="default"):
         self.ip = ip
         self.netgroup = netgroup
-        self.state = mesos_pb2.TASK_STAGING
+        self.state = None
         self.task_id = None
         self.executor_id = None
         self.task_id = None
@@ -165,6 +165,44 @@ class PingTask(Task):
         """
         return "ping %s from %s" % (self.target, self.ip)
 
+
+class CantPingTask(Task):
+    """
+    Subclass of Task which will succeed if it _cannot_ ping the target.
+    This Task asserts that targets which should be unreachable are in fact
+    unreachable.
+    """
+    def __init__(self, target, *args, **kwargs):
+        super(CantPingTask, self).__init__(*args, **kwargs)
+        self.target = target
+
+    def as_new_mesos_task(self):
+        """
+        Extends the basic mesos task settings by adding the target field,
+        as well as a custom label called "task_type" which the executor will
+        read to identify the task type.
+        """
+        task = super(CantPingTask, self).as_new_mesos_task()
+        task.name = self.task_name
+
+        task_type_label = task.labels.labels.add()
+        task_type_label.key = "task_type"
+        task_type_label.value = "cant_ping"
+
+        target_label = task.labels.labels.add()
+        target_label.key = "target"
+        target_label.value = self.target
+
+        return task
+
+    @property
+    def task_name(self):
+        """
+        Give a nice-name to identify the task
+        """
+        return "shouldn't ping %s from %s" % (self.target, self.ip)
+
+
 class SleepTask(Task):
     def as_new_mesos_task(self):
         """
@@ -172,6 +210,7 @@ class SleepTask(Task):
         read to identify the task type.
         """
         task = super(SleepTask, self).as_new_mesos_task()
+        task.name = self.task_name
 
         task_type_label = task.labels.labels.add()
         task_type_label.key = "task_type"
@@ -220,6 +259,7 @@ class TestScheduler(mesos.interface.Scheduler):
         self.tasks = [SleepTask(ip="192.168.1.0"),
                       PingTask(ip="192.168.1.1", target="192.168.1.0"),
                       PingTask(ip="192.168.1.2", target="192.168.1.0")]
+                      # CantPingTask(ip="192.168.1.3", target="192.168.2.0")]
         """
         The source-of-truth for task information. Whenever the framework receives
         an update or modifies configuration of tasks in mesos in any way, it should
@@ -238,25 +278,41 @@ class TestScheduler(mesos.interface.Scheduler):
     def registered(self, driver, frameworkId, masterInfo):
         _log.info("REGISTERED: with framework ID %s" % frameworkId.value)
 
-    def calculate_offer(self, offers):
+    def calculate_offer(self, offer):
         # Calculate how juicy these offers are
         availableCpus = 0
         availableMem = 0
-        for offer in offers:
-            offerCpus = 0
-            offerMem = 0
-            for resource in offer.resources:
-                if resource.name == "cpus":
-                    offerCpus += resource.scalar.value
-                elif resource.name == "mem":
-                    offerMem += resource.scalar.value
+        print offer.slave_id.value
+        offerCpus = 0
+        offerMem = 0
+        for resource in offer.resources:
+            if resource.name == "cpus":
+                offerCpus += resource.scalar.value
+            elif resource.name == "mem":
+                offerMem += resource.scalar.value
 
-            _log.debug("\tReceived Offer %s with cpus: %s and mem: %s" \
-                  % (offer.id.value, offerCpus, offerMem))
+        _log.debug("\tReceived Offer %s with cpus: %s and mem: %s" \
+              % (offer.id.value, offerCpus, offerMem))
 
-            availableCpus += offerCpus
-            availableMem += offerMem
+        availableCpus += offerCpus
+        availableMem += offerMem
         return availableCpus, availableMem
+
+    def get_next_launch_task(self):
+        if self.state == State.LaunchSleepTasks:
+            launch_types = [SleepTask]
+        elif self.state == State.LaunchPingTasks:
+            launch_types = [PingTask, CantPingTask]
+        else:
+            _log.error("system ")
+
+        launch_tasks = [calico_task for calico_task in self.tasks if \
+                        type(calico_task) in launch_types and \
+                        calico_task.state is None]
+        if launch_tasks:
+            return launch_tasks.pop()
+        else:
+            return None
 
     def resourceOffers(self, driver, offers):
         """
@@ -265,61 +321,57 @@ class TestScheduler(mesos.interface.Scheduler):
         of the framework.
         """
         _log.info("RECEIVED_OFFER")
-        if self.state == State.LaunchSleepTasks:
-            launch_type = SleepTask
-        elif self.state == State.LaunchPingTasks:
-            launch_type = PingTask
-        else:
-            _log.error("system ")
+
 
         # Get all tasks pending launch
-        launch_tasks = [calico_task for calico_task in self.tasks if \
-                        type(calico_task) == launch_type and \
-                        calico_task.state is mesos_pb2.TASK_STAGING]
+
         # If there's not task pending launch, reject the offers - we're waiting for them to come up
-        if not launch_tasks:
+        if not self.get_next_launch_task():
             _log.info("All tasks launched. Rejecting offer")
             for offer in offers:
                 driver.declineOffer(offer.id)
             return
         else:
-            availableCpus, availableMem = self.calculate_offer(offers)
             prepared_tasks = []
-            # Get the slave_id from one of the offers, they should all be the same
-            slave_id = offers[0].slave_id.value
-            # loop through calico_tasks, prepare as many as possible for launch
-            # as mesos_tasks until we run out of resources within these offers
-            for calico_task in launch_tasks:
-                if availableCpus >= TASK_CPUS and availableMem >= TASK_MEM:
-                    self.tasksLaunched += 1
-                    calico_task.task_id = str(self.tasksLaunched)
-                    calico_task.slave_id = slave_id
-                    calico_task.state = mesos_pb2.TASK_STAGING
+            for offer in offers:
+                calico_task = self.get_next_launch_task()
+                if not calico_task:
+                    print "declining offer: %s" % offer.id
+                    driver.declineOffer(offer.id)
+                else:
+                    availableCpus, availableMem = self.calculate_offer(offer)
+                    # Get the slave_id from one of the offers, they should all be the same
+                    slave_id = offer.slave_id.value
+                    # loop through calico_tasks, prepare as many as possible for launch
+                    # as mesos_tasks until we run out of resources within these offers
 
-                    _log.info("\tLaunching Task %s (%s)" \
-                              % (calico_task.task_id, calico_task.task_name))
+                    if availableCpus >= TASK_CPUS and availableMem >= TASK_MEM:
+                        self.tasksLaunched += 1
+                        calico_task.task_id = str(self.tasksLaunched)
+                        calico_task.slave_id = slave_id
+                        calico_task.state = mesos_pb2.TASK_STAGING
 
-                    mesos_task = calico_task.as_new_mesos_task()
-                    prepared_tasks.append(mesos_task)
+                        _log.info("\tLaunching Task %s (%s)" \
+                                  % (calico_task.task_id, calico_task.task_name))
+                        _log.info("\t using offer %s", offer.id)
 
-                    availableCpus -= TASK_CPUS
-                    availableMem -= TASK_MEM
-            if prepared_tasks:
-                operation = mesos_pb2.Offer.Operation()
-                operation.type = mesos_pb2.Offer.Operation.LAUNCH
-                operation.launch.task_infos.extend(prepared_tasks)
-                # driver.acceptOffers([offer.id for offer in offers], [operation])
-                driver.acceptOffers([offers.pop().id], [operation])
+                        mesos_task = calico_task.as_new_mesos_task()
+                        prepared_tasks.append(mesos_task)
 
+                        availableCpus -= TASK_CPUS
+                        availableMem -= TASK_MEM
+
+                        operation = mesos_pb2.Offer.Operation()
+                        operation.type = mesos_pb2.Offer.Operation.LAUNCH
+                        operation.launch.task_infos.extend([mesos_task])
+                        driver.acceptOffers([offer.id], [operation])
+                # driver.acceptOffers([offers.pop().id], [operation])
 
     def statusUpdate(self, driver, update):
         """
         Run when the Executor sends a status update back to the Framework
         """
-
-
         # Find the task which corresponds to the status update
-
         task_search = [task for task in self.tasks if task.task_id == update.task_id.value]
         if len(task_search) == 1:
             calico_task = task_search.pop()
@@ -346,7 +398,7 @@ class TestScheduler(mesos.interface.Scheduler):
                     _log.info('\tAll sleep tasks running. Transitioning to LaunchPingTasks')
                     # Move all ping tasks into the task queue
                     self.task_queue = [task for task in self.tasks if \
-                                       type(task) == PingTask]
+                                       type(task) in [PingTask, CantPingTask]]
                     self.state = State.LaunchPingTasks
             else:
                 _log.info('Sleeptask is reporting as %s' % update.state)
@@ -362,7 +414,7 @@ class TestScheduler(mesos.interface.Scheduler):
                 _log.info("\tPing task complete!")
                 # Check if all ping tasks are complete
                 unfinished_ping_tasks = [task for task in self.tasks if \
-                                         type(task) == PingTask and \
+                                         type(task) in [PingTask, CantPingTask] and \
                                          task.state != mesos_pb2.TASK_FINISHED]
                 if unfinished_ping_tasks:
                     _log.info('\tWaiting for the remaining %s' % len(unfinished_ping_tasks))
@@ -376,7 +428,7 @@ class TestScheduler(mesos.interface.Scheduler):
         if update.data != "data with a \0 byte":
             _log.error("The ACK payload did not match!")
             _log.info("  Expected: 'data with a \\x00 byte'")
-            _log.info("  Actual:  ", repr(str(update.data)))
+            _log.info("  Actual:  %s", repr(str(update.data)))
             sys.exit(1)
 
         if update.state == mesos_pb2.TASK_FINISHED:

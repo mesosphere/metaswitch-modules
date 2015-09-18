@@ -33,7 +33,6 @@ class MyExecutor(mesos.interface.Executor):
             update.data = 'data with a \0 byte'
             driver.sendStatusUpdate(update)
 
-            # This is where one would perform the requested task.
             labels = {label.key: label.value for label in task.labels.labels}
             task_type = labels["task_type"]
 
@@ -42,11 +41,13 @@ class MyExecutor(mesos.interface.Executor):
                 command = ["ping", "-c", "1", target]
             elif task_type == 'sleep':
                 command = ["sleep", "10"]
-
-            # Build the response packet
-            update = mesos_pb2.TaskStatus()
-            update.task_id.value = task.task_id.value
-            update.data = 'data with a \0 byte'
+            elif task_type == 'cant_ping':
+                target = labels["target"]
+                command = ["!", "ping", "-c", "1", "-w", "5", target]
+            else:
+                update.state = mesos_pb2.TASK_ERROR
+                update.message = "Unrecognized task type"
+                driver.sendStatusUpdate(update)
 
             # Launch the command, fill the response packet appropriately
             try:
