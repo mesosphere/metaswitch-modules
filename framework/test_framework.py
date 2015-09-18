@@ -258,8 +258,8 @@ class TestScheduler(mesos.interface.Scheduler):
         self.messagesReceived = 0
         self.tasks = [SleepTask(ip="192.168.1.0"),
                       PingTask(ip="192.168.1.1", target="192.168.1.0"),
-                      PingTask(ip="192.168.1.2", target="192.168.1.0")]
-                      # CantPingTask(ip="192.168.1.3", target="192.168.2.0")]
+                      PingTask(ip="192.168.1.2", target="192.168.1.0"),
+                      CantPingTask(ip="192.168.1.3", netgroup="netgroup_b", target="192.168.1.0")]
         """
         The source-of-truth for task information. Whenever the framework receives
         an update or modifies configuration of tasks in mesos in any way, it should

@@ -38,25 +38,35 @@ class MyExecutor(mesos.interface.Executor):
 
             if task_type == 'ping':
                 target = labels["target"]
-                command = ["ping", "-c", "1", target]
+                command = "ping -c 1 %s" % target
             elif task_type == 'sleep':
                 command = ["sleep", "10"]
             elif task_type == 'cant_ping':
                 target = labels["target"]
-                command = ["!", "ping", "-c", "1", "-w", "5", target]
+                command = "! ping -c 1 -w 1 %s" % target
             else:
                 update.state = mesos_pb2.TASK_ERROR
                 update.message = "Unrecognized task type"
                 driver.sendStatusUpdate(update)
 
+            print " ".join(command)
+
             # Launch the command, fill the response packet appropriately
             try:
                 print subprocess.check_output(["ifconfig"])
-                subprocess.check_call(command)
+                if task_type == "sleep":
+                    subprocess.check_call(command)
+                else:
+                    subprocess.check_call(command, shell=True)
             except subprocess.CalledProcessError:
-                print "Sending FAIL update..."
-                update.state = mesos_pb2.TASK_FINISHED
-                update.message = "I can't even"
+                print "Task command failed. Sending FAIL update..."
+                update.state = mesos_pb2.TASK_FAILED
+                update.message = "Task command failed"
+            except Exception:
+                message = "subprocess encountered unexpected error"
+                print message
+                update.message = message
+                update.state = mesos_pb2.TASK_ERROR
             else:
                 # Send success
                 print "Sending SUCCESS update..."
