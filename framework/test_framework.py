@@ -112,9 +112,10 @@ class Task(object):
         netgroup_label.value = self.netgroup
 
         # Isolator IP label
-        ip_label = task.labels.labels.add()
-        ip_label.key = "network_isolator.ip"
-        ip_label.value = self.ip
+        if self.ip:
+            ip_label = task.labels.labels.add()
+            ip_label.key = "network_isolator.ip"
+            ip_label.value = self.ip
 
         # create the executor
         task.executor.MergeFrom(_generate_executor(self))
