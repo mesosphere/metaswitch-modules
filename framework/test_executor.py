@@ -39,57 +39,31 @@ class MyExecutor(mesos.interface.Executor):
 
             if task_type == 'ping':
                 target = labels["target"]
-                try:
-                    # TODO: Wait for framework to report that the target is up before
-                    # firing the ping
-                    print subprocess.check_output(["ifconfig"])
-                    print "Pinging %s" % target
-                    subprocess.check_call(["ping", "-c", "1", target])
-                except subprocess.CalledProcessError:
-                    print "Couldn't ping %s" % target
-                    print "Sending FAIL update..."
-                    update = mesos_pb2.TaskStatus()
-                    update.task_id.value = task.task_id.value
-                    update.state = mesos_pb2.TASK_FAILED
-                    update.message = "I can't even"
-                    update.data = 'data with a \0 byte'
-                    driver.sendStatusUpdate(update)
-                    print "Sent status update"
-                else:
-                    # Send success
-                    print "Sending SUCCESS update..."
-                    update = mesos_pb2.TaskStatus()
-                    update.task_id.value = task.task_id.value
-                    update.state = mesos_pb2.TASK_FINISHED
-                    update.data = 'data with a \0 byte'
-                    driver.sendStatusUpdate(update)
-                    print "Sent status update"
-
-
+                command = ["ping", "-c", "1", target]
             elif task_type == 'sleep':
-                try:
-                    # TODO: Wait for framework to report that the target is up before
-                    # firing the ping
-                    print subprocess.check_output(["ifconfig"])
-                    subprocess.check_call(["sleep", "10"])
-                except subprocess.CalledProcessError:
-                    print "Sending FAIL update..."
-                    update = mesos_pb2.TaskStatus()
-                    update.task_id.value = task.task_id.value
-                    update.state = mesos_pb2.TASK_FINISHED
-                    update.message = "I can't even"
-                    update.data = 'data with a \0 byte'
-                    driver.sendStatusUpdate(update)
-                    print "Sent status update"
-                else:
-                    # Send success
-                    print "Sending SUCCESS update..."
-                    update = mesos_pb2.TaskStatus()
-                    update.task_id.value = task.task_id.value
-                    update.state = mesos_pb2.TASK_FINISHED
-                    update.data = 'data with a \0 byte'
-                    driver.sendStatusUpdate(update)
-                    print "Sent status update"
+                command = ["sleep", "10"]
+
+            # Build the response packet
+            update = mesos_pb2.TaskStatus()
+            update.task_id.value = task.task_id.value
+            update.data = 'data with a \0 byte'
+
+            # Launch the command, fill the response packet appropriately
+            try:
+                print subprocess.check_output(["ifconfig"])
+                subprocess.check_call(command)
+            except subprocess.CalledProcessError:
+                print "Sending FAIL update..."
+                update.state = mesos_pb2.TASK_FINISHED
+                update.message = "I can't even"
+            else:
+                # Send success
+                print "Sending SUCCESS update..."
+                update.state = mesos_pb2.TASK_FINISHED
+
+            # Send the response
+            driver.sendStatusUpdate(update)
+            print "Sent status update"
 
         thread = threading.Thread(target=run_task)
         thread.start()
