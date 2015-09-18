@@ -426,9 +426,12 @@ class TestScheduler(mesos.interface.Scheduler):
 
         # Ensure the ACK came through.
         if update.data != "data with a \0 byte":
-            _log.error("The ACK payload did not match!")
-            _log.info("  Expected: 'data with a \\x00 byte'")
-            _log.info("  Actual:  %s", repr(str(update.data)))
+            _log.error("The ACK payload did not match! ")
+            _log.error("ACK Data:  %s", repr(str(update.data)))
+            _log.error("Sent by: %s", mesos_pb2.TaskStatus.Source.Name(update.source))
+            _log.error("Reason: %s", mesos_pb2.TaskStatus.Reason.Name(update.reason))
+            _log.error("Message: %s", update.message)
+
             sys.exit(1)
 
         if update.state == mesos_pb2.TASK_FINISHED:
