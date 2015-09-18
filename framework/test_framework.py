@@ -233,29 +233,36 @@ class State():
 class TestScheduler(mesos.interface.Scheduler):
     """
     This sample Scheduler implements a Mesos Framework powered by Calico.
+    It performs the following steps:
 
     1. Launch all SleepTasks
     2. Wait for SleepTasks to report as RUNNING
-    3. Launch all PingTasks
-    4.
+    3. Launch all Cant/PingTasks
+    4. Wait for all Cant/PingTasks to FINISH
+
+    It will report failures during each step appropriately.
     """
     def __init__(self, implicitAcknowledgements):
         self.implicitAcknowledgements = implicitAcknowledgements
         """
-        Flag to disable framework ACK messages
+        Flag to disable the requirement that the Executor responds to ACK messages
         """
 
-        self.tasksLaunched = 0
+        self.tasks_launched = 0
         """
         Counter to track number of tasks launched
         """
 
-        self.messagesSent = 0
+        self.framework_acks_sent = 0
+        """
+        Running total of how many acks have been sent to the executor
         """
 
+        self.framework_acks_received = 0
+        """
+        Running total of how many acks have been received by the executor
         """
 
-        self.messagesReceived = 0
         self.tasks = [SleepTask(ip="192.168.1.0"),
                       PingTask(ip="192.168.1.1", target="192.168.1.0"),
                       PingTask(ip="192.168.1.2", target="192.168.1.0"),
@@ -267,22 +274,31 @@ class TestScheduler(mesos.interface.Scheduler):
         """
 
         self.state = State.LaunchSleepTasks
+        """
+        State tracker used so the resourceOffers and statusUpdate can collaborate
+        on transitioning between the 4 steps of this framework.
+        Initially, we default into launching all SleepTasks.
+        """
 
     @property
-    def tasksFinished(self):
+    def num_tasks_finished(self):
         """
-        Counter to track number of tasks complete.
+        Counter to track number of completed tasks.
         """
         return len([task for task in self.tasks if task.state is mesos_pb2.TASK_FINISHED])
 
     def registered(self, driver, frameworkId, masterInfo):
-        _log.info("REGISTERED: with framework ID %s" % frameworkId.value)
+        """
+        Callback used when the framework is succesfully registered.
+        """
+        _log.info("REGISTERED: with framework ID %s", frameworkId.value)
 
-    def calculate_offer(self, offer):
-        # Calculate how juicy these offers are
+    def _calculate_offer(self, offer):
+        """
+        Calculates how much cpu / memory is available in an offer
+        """
         availableCpus = 0
         availableMem = 0
-        print offer.slave_id.value
         offerCpus = 0
         offerMem = 0
         for resource in offer.resources:
@@ -291,20 +307,24 @@ class TestScheduler(mesos.interface.Scheduler):
             elif resource.name == "mem":
                 offerMem += resource.scalar.value
 
-        _log.debug("\tReceived Offer %s with cpus: %s and mem: %s" \
-              % (offer.id.value, offerCpus, offerMem))
+        _log.debug("\tReceived Offer %s with cpus: %s and mem: %s",
+                   offer.id.value, offerCpus, offerMem)
 
         availableCpus += offerCpus
         availableMem += offerMem
         return availableCpus, availableMem
 
-    def get_next_launch_task(self):
+    def _get_next_launch_task(self):
+        """
+        Returns the next task that is ready for launch depending on the
+        framework's current state, as well as the tasks' states.
+        """
         if self.state == State.LaunchSleepTasks:
             launch_types = [SleepTask]
         elif self.state == State.LaunchPingTasks:
             launch_types = [PingTask, CantPingTask]
         else:
-            _log.error("system ")
+            _log.error("Framework has entered an unidentifiable state.")
 
         launch_tasks = [calico_task for calico_task in self.tasks if \
                         type(calico_task) in launch_types and \
@@ -317,43 +337,38 @@ class TestScheduler(mesos.interface.Scheduler):
     def resourceOffers(self, driver, offers):
         """
         Triggered when the framework is offered resources by mesos.
-        This launches remaining tasks corresponding with the current self.state
-        of the framework.
+        This launches pending tasks, which are determined by
+        the current self.state of the framework.
         """
         _log.info("RECEIVED_OFFER")
 
-
-        # Get all tasks pending launch
-
-        # If there's not task pending launch, reject the offers - we're waiting for them to come up
-        if not self.get_next_launch_task():
+        # Check if there's any tasks queued for launch
+        if not self._get_next_launch_task():
             _log.info("All tasks launched. Rejecting offer")
             for offer in offers:
                 driver.declineOffer(offer.id)
-            return
         else:
             prepared_tasks = []
             for offer in offers:
-                calico_task = self.get_next_launch_task()
+                calico_task = self._get_next_launch_task()
                 if not calico_task:
-                    print "declining offer: %s" % offer.id
+                    _log.info("Declining offer: %s", offer.id.value)
                     driver.declineOffer(offer.id)
                 else:
-                    availableCpus, availableMem = self.calculate_offer(offer)
+                    availableCpus, availableMem = self._calculate_offer(offer)
                     # Get the slave_id from one of the offers, they should all be the same
                     slave_id = offer.slave_id.value
                     # loop through calico_tasks, prepare as many as possible for launch
                     # as mesos_tasks until we run out of resources within these offers
 
                     if availableCpus >= TASK_CPUS and availableMem >= TASK_MEM:
-                        self.tasksLaunched += 1
-                        calico_task.task_id = str(self.tasksLaunched)
+                        self.tasks_launched += 1
+                        calico_task.task_id = str(self.tasks_launched)
                         calico_task.slave_id = slave_id
                         calico_task.state = mesos_pb2.TASK_STAGING
 
-                        _log.info("\tLaunching Task %s (%s)" \
-                                  % (calico_task.task_id, calico_task.task_name))
-                        _log.info("\t using offer %s", offer.id)
+                        _log.info("\tLaunching Task %s (%s)", calico_task.task_id, calico_task.task_name)
+                        _log.debug("\t Using offer %s", offer.id.value)
 
                         mesos_task = calico_task.as_new_mesos_task()
                         prepared_tasks.append(mesos_task)
@@ -369,21 +384,38 @@ class TestScheduler(mesos.interface.Scheduler):
 
     def statusUpdate(self, driver, update):
         """
-        Run when the Executor sends a status update back to the Framework
+        Triggered when the Framework receives a task Status Update from the Executor
+
+        First, we'll check the data payload to ensure the update came from the
+        executor in tact.
+        Then, we'll update the corresponding task in self.tasks
+        Then we'll take appropriate action based on the type of update received, as
+        well as the current state of the framework.
+        Lastly, we do general all-case actions, such as Executor ACKS
         """
+        # Ensure the Update's payload is correct. This confirms that communications
+        # is up between Framework<->Executor
+        if update.data != "data with a \0 byte":
+            _log.error("The ACK payload did not match! ")
+            _log.error("ACK Data:  %s", repr(str(update.data)))
+            _log.error("Sent by: %s", mesos_pb2.TaskStatus.Source.Name(update.source))
+            _log.error("Reason: %s", mesos_pb2.TaskStatus.Reason.Name(update.reason))
+            _log.error("Message: %s", update.message)
+            driver.abort()
+
         # Find the task which corresponds to the status update
         task_search = [task for task in self.tasks if task.task_id == update.task_id.value]
         if len(task_search) == 1:
             calico_task = task_search.pop()
             calico_task.state = update.state
         else:
-            _log.error("Received Task Update from Unidentified TaskID: %s" % update.task_id.value)
+            _log.error("Received Task Update from Unidentified TaskID: %s", update.task_id.value)
             driver.abort()
 
-        _log.info("TASK_UPDATE: Task %s (%s) is in state %s" % \
-            (calico_task.task_id,
+        _log.info("TASK_UPDATE: Task %s (%s) is in state %s", \
+            calico_task.task_id,
              calico_task.task_name,
-             mesos_pb2.TaskState.Name(calico_task.state)))
+             mesos_pb2.TaskState.Name(calico_task.state))
 
         if self.state == State.LaunchSleepTasks:
             if calico_task.state == mesos_pb2.TASK_RUNNING:
@@ -393,7 +425,7 @@ class TestScheduler(mesos.interface.Scheduler):
                                           type(task) == SleepTask and \
                                           task.state != mesos_pb2.TASK_RUNNING]
                 if unfinished_sleep_tasks:
-                    _log.info('\tWaiting for the remaining %s' % len(unfinished_sleep_tasks))
+                    _log.info('\tWaiting for the remaining %s', len(unfinished_sleep_tasks))
                 else:
                     _log.info('\tAll sleep tasks running. Transitioning to LaunchPingTasks')
                     # Move all ping tasks into the task queue
@@ -401,14 +433,14 @@ class TestScheduler(mesos.interface.Scheduler):
                                        type(task) in [PingTask, CantPingTask]]
                     self.state = State.LaunchPingTasks
             else:
-                _log.info('Sleeptask is reporting as %s' % update.state)
+                _log.info('Sleeptask is reporting as %s', update.state)
                 driver.abort()
 
         elif self.state == State.LaunchPingTasks:
             if calico_task.state == mesos_pb2.TASK_RUNNING:
                 pass
             elif calico_task.state == mesos_pb2.TASK_FAILED:
-                _log.info("\tPing from %s to %s failed" % (calico_task.ip, calico_task.target))
+                _log.info("\tPing from %s to %s failed", calico_task.ip, calico_task.target)
                 driver.abort()
             elif calico_task.state == mesos_pb2.TASK_FINISHED:
                 _log.info("\tPing task complete!")
@@ -417,43 +449,35 @@ class TestScheduler(mesos.interface.Scheduler):
                                          type(task) in [PingTask, CantPingTask] and \
                                          task.state != mesos_pb2.TASK_FINISHED]
                 if unfinished_ping_tasks:
-                    _log.info('\tWaiting for the remaining %s' % len(unfinished_ping_tasks))
+                    _log.info('\tWaiting for the remaining %s', len(unfinished_ping_tasks))
                 else:
                     _log.info('\tAll ping tests finished succesfully. SUCCCESS!!!!')
             else:
-                _log.error('\tunexpected state: %s' % update.state)
+                _log.error('\tunexpected state: %s', update.state)
                 driver.abort()
 
-        # Ensure the ACK came through.
-        if update.data != "data with a \0 byte":
-            _log.error("The ACK payload did not match! ")
-            _log.error("ACK Data:  %s", repr(str(update.data)))
-            _log.error("Sent by: %s", mesos_pb2.TaskStatus.Source.Name(update.source))
-            _log.error("Reason: %s", mesos_pb2.TaskStatus.Reason.Name(update.reason))
-            _log.error("Message: %s", update.message)
 
-            sys.exit(1)
-
+        # On each TASK_FINISHED, send an ACK to the framework
         if update.state == mesos_pb2.TASK_FINISHED:
-            if self.tasksFinished == len(self.tasks):
-                _log.info("All %s tasks done, waiting for final framework message" % self.tasksFinished)
+            if self.num_tasks_finished == len(self.tasks):
+                _log.info("All tasks finished!")
 
-            # Send a message to the slave's executor to confirm they're doin OK
-            self.messagesSent += 1
+            self.framework_acks_sent += 1
             _log.info("Sending ACK to Executor")
             driver.sendFrameworkMessage(
                 mesos_pb2.ExecutorID(value=calico_task.executor_id),
                 mesos_pb2.SlaveID(value=calico_task.slave_id),
                 'data with a \0 byte')
 
+        # Respond to any other task failures if they weren't caught already
         if update.state == mesos_pb2.TASK_LOST or \
            update.state == mesos_pb2.TASK_KILLED or \
            update.state == mesos_pb2.TASK_FAILED:
-            _log.error("Aborting because task %s (%s) is in unexpected state %s with message '%s'" \
-                % (calico_task.task_name,
-                   update.task_id.value,
-                   mesos_pb2.TaskState.Name(update.state),
-                   update.message))
+            _log.error("UNCAUGHT: Aborting because task %s (%s) is in unexpected state %s with message '%s'",
+                       update.task_id.value,
+                       calico_task.task_name,
+                       mesos_pb2.TaskState.Name(update.state),
+                       update.message)
             driver.abort()
 
         # Explicitly acknowledge the update if implicit acknowledgements
@@ -463,18 +487,18 @@ class TestScheduler(mesos.interface.Scheduler):
 
     def frameworkMessage(self, driver, executorId, slaveId, message):
         _log.info("Received ACK from Executor")
-        self.messagesReceived += 1
+        self.framework_acks_received += 1
 
         # The message bounced back as expected.
         if message != "data with a \0 byte":
             _log.error("Executor ACK contains unexpected data")
             sys.exit(1)
 
-        if self.messagesReceived == len(self.tasks):
-            if self.messagesReceived != self.messagesSent:
-                _log.info("Sent %s" % self.messagesSent)
-                _log.info("but received %s" % self.messagesReceived)
-                sys.exit(1)
+        if self.framework_acks_received == len(self.tasks):
+            if self.framework_acks_received != self.framework_acks_sent:
+                _log.info("Sent %s", self.framework_acks_sent)
+                _log.info("but received %s", self.framework_acks_received)
+                driver.abort()
             _log.info("All tasks done, and all messages received, exiting")
             driver.stop()
 

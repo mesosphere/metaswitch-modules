@@ -49,7 +49,7 @@ class MyExecutor(mesos.interface.Executor):
                 update.message = "Unrecognized task type"
                 driver.sendStatusUpdate(update)
 
-            print " ".join(command)
+            print command
 
             # Launch the command, fill the response packet appropriately
             try:
