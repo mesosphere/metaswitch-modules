@@ -351,18 +351,22 @@ class TestScheduler(mesos.interface.Scheduler):
         else:
             prepared_tasks = []
             for offer in offers:
-                calico_task = self._get_next_launch_task()
-                if not calico_task:
+                if not self._get_next_launch_task():
                     _log.info("Declining offer: %s", offer.id.value)
                     driver.declineOffer(offer.id)
                 else:
-                    availableCpus, availableMem = self._calculate_offer(offer)
-                    # Get the slave_id from one of the offers, they should all be the same
-                    slave_id = offer.slave_id.value
-                    # loop through calico_tasks, prepare as many as possible for launch
-                    # as mesos_tasks until we run out of resources within these offers
+                    operation = mesos_pb2.Offer.Operation()
+                    operation.type = mesos_pb2.Offer.Operation.LAUNCH
 
-                    if availableCpus >= TASK_CPUS and availableMem >= TASK_MEM:
+                    offer_cpus_remaining, offer_mem_remaining = self._calculate_offer(offer)
+                    while offer_cpus_remaining >= TASK_CPUS and offer_mem_remaining >= TASK_MEM and \
+                            self._get_next_launch_task():
+                        calico_task = self._get_next_launch_task()
+                        # Get the slave_id from one of the offers, they should all be the same
+                        slave_id = offer.slave_id.value
+                        # loop through calico_tasks, prepare as many as possible for launch
+                        # as mesos_tasks until we run out of resources within these offers
+
                         self.tasks_launched += 1
                         calico_task.task_id = str(self.tasks_launched)
                         calico_task.slave_id = slave_id
@@ -371,17 +375,12 @@ class TestScheduler(mesos.interface.Scheduler):
                         _log.info("\tLaunching Task %s (%s)", calico_task.task_id, calico_task.task_name)
                         _log.debug("\t Using offer %s", offer.id.value)
 
-                        mesos_task = calico_task.as_new_mesos_task()
-                        prepared_tasks.append(mesos_task)
+                        operation.launch.task_infos.extend([calico_task.as_new_mesos_task()])
 
-                        availableCpus -= TASK_CPUS
-                        availableMem -= TASK_MEM
+                        offer_cpus_remaining -= TASK_CPUS
+                        offer_mem_remaining -= TASK_MEM
 
-                        operation = mesos_pb2.Offer.Operation()
-                        operation.type = mesos_pb2.Offer.Operation.LAUNCH
-                        operation.launch.task_infos.extend([mesos_task])
-                        driver.acceptOffers([offer.id], [operation])
-                # driver.acceptOffers([offers.pop().id], [operation])
+                    driver.acceptOffers([offer.id], [operation])
 
     def statusUpdate(self, driver, update):
         """
