@@ -28,6 +28,8 @@ TASK_CPUS = 1
 TASK_MEM = 128
 LOGFILE = '/var/log/calico/test_framework.log'
 
+BAD_TASK_STATES = [mesos_pb2.TASK_LOST, mesos_pb2.TASK_KILLED, mesos_pb2.TASK_FAILED]
+
 
 _log = logging.getLogger("TestFramework")
 
@@ -218,10 +220,6 @@ class SleepTask(Task):
         return "ListenTask(ip=%s)" % self.ip
 
 
-class State():
-    LaunchSleepTasks, LaunchPingTasks = range(0,2)
-
-
 class TestScheduler(mesos.interface.Scheduler):
     """
     This sample Scheduler implements a Mesos Framework powered by Calico.
@@ -266,13 +264,6 @@ class TestScheduler(mesos.interface.Scheduler):
         immediately update the information stored here.
         """
 
-        self.state = State.LaunchSleepTasks
-        """
-        State tracker used so the resourceOffers and statusUpdate can collaborate
-        on transitioning between the 4 steps of this framework.
-        Initially, we default into launching all SleepTasks.
-        """
-
     @property
     def num_tasks_finished(self):
         """
@@ -312,16 +303,16 @@ class TestScheduler(mesos.interface.Scheduler):
         Returns the next task that is ready for launch depending on the
         framework's current state, as well as the tasks' states.
         """
-        if self.state == State.LaunchSleepTasks:
-            launch_types = [SleepTask]
-        elif self.state == State.LaunchPingTasks:
-            launch_types = [PingTask, CantPingTask]
-        else:
-            _log.error("Framework has entered an unidentifiable state.")
+        pending_sleep_tasks = [calico_task for calico_task in self.tasks if \
+                               type(calico_task) is SleepTask and \
+                               calico_task.state is None]
 
-        launch_tasks = [calico_task for calico_task in self.tasks if \
-                        type(calico_task) in launch_types and \
-                        calico_task.state is None]
+        pending_ping_tasks = [calico_task for calico_task in self.tasks if \
+                              type(calico_task) in [PingTask, CantPingTask] and \
+                              calico_task.target.state is mesos_pb2.TASK_RUNNING and \
+                              calico_task.state is None]
+
+        launch_tasks = pending_sleep_tasks + pending_ping_tasks
         if launch_tasks:
             return launch_tasks.pop()
         else:
@@ -337,7 +328,7 @@ class TestScheduler(mesos.interface.Scheduler):
 
         # Check if there's any tasks queued for launch
         if not self._get_next_launch_task():
-            _log.info("All tasks launched. Rejecting offer")
+            _log.info("No tasks queued. Rejecting offer")
             for offer in offers:
                 driver.declineOffer(offer.id)
         else:
@@ -388,7 +379,7 @@ class TestScheduler(mesos.interface.Scheduler):
         # Ensure the Update's payload is correct. This confirms that communications
         # is up between Framework<->Executor
         if update.data != "data with a \0 byte":
-            _log.error("The ACK payload did not match! ")
+            _log.error("The update payload did not match! ")
             _log.error("ACK Data:  %s", repr(str(update.data)))
             _log.error("Sent by: %s", mesos_pb2.TaskStatus.Source.Name(update.source))
             _log.error("Reason: %s", mesos_pb2.TaskStatus.Reason.Name(update.reason))
@@ -404,50 +395,20 @@ class TestScheduler(mesos.interface.Scheduler):
             _log.error("Received Task Update from Unidentified TaskID: %s", update.task_id.value)
             driver.abort()
 
+        # Report the update
         _log.info("TASK_UPDATE: Task %s (%s) is in state %s", \
             calico_task.task_id,
              calico_task,
              mesos_pb2.TaskState.Name(calico_task.state))
 
-        if self.state == State.LaunchSleepTasks:
-            if calico_task.state == mesos_pb2.TASK_RUNNING:
-                # Received a RUNNING update from one of the launching SleepTasks
-                # Check if all sleep tasks are running
-                unfinished_sleep_tasks = [task for task in self.tasks if \
-                                          type(task) == SleepTask and \
-                                          task.state != mesos_pb2.TASK_RUNNING]
-                if unfinished_sleep_tasks:
-                    _log.info('\tWaiting for the remaining %s', len(unfinished_sleep_tasks))
-                else:
-                    _log.info('\tAll sleep tasks running. Transitioning to LaunchPingTasks')
-                    # Move all ping tasks into the task queue
-                    self.task_queue = [task for task in self.tasks if \
-                                       type(task) in [PingTask, CantPingTask]]
-                    self.state = State.LaunchPingTasks
-            else:
-                _log.info('Sleeptask is reporting as %s', update.state)
-                driver.abort()
-
-        elif self.state == State.LaunchPingTasks:
-            if calico_task.state == mesos_pb2.TASK_RUNNING:
-                pass
-            elif calico_task.state == mesos_pb2.TASK_FAILED:
-                _log.info("\tPing from %s to %s failed", calico_task.ip, calico_task.target)
-                driver.abort()
-            elif calico_task.state == mesos_pb2.TASK_FINISHED:
-                _log.info("\tPing task complete!")
-                # Check if all ping tasks are complete
-                unfinished_ping_tasks = [task for task in self.tasks if \
-                                         type(task) in [PingTask, CantPingTask] and \
-                                         task.state != mesos_pb2.TASK_FINISHED]
-                if unfinished_ping_tasks:
-                    _log.info('\tWaiting for the remaining %s', len(unfinished_ping_tasks))
-                else:
-                    _log.info('\tAll ping tests finished succesfully. SUCCCESS!!!!')
-            else:
-                _log.error('\tunexpected state: %s', update.state)
-                driver.abort()
-
+        # Check for bad update
+        if update.state in BAD_TASK_STATES:
+            _log.error("Task %s (%s) is in unexpected state %s with message '%s'",
+                       update.task_id.value,
+                       calico_task,
+                       mesos_pb2.TaskState.Name(update.state),
+                       update.message)
+            driver.abort()
 
         # On each TASK_FINISHED, send an ACK to the framework
         if update.state == mesos_pb2.TASK_FINISHED:
@@ -460,17 +421,6 @@ class TestScheduler(mesos.interface.Scheduler):
                 mesos_pb2.ExecutorID(value=calico_task.executor_id),
                 mesos_pb2.SlaveID(value=calico_task.slave_id),
                 'data with a \0 byte')
-
-        # Respond to any other task failures if they weren't caught already
-        if update.state == mesos_pb2.TASK_LOST or \
-           update.state == mesos_pb2.TASK_KILLED or \
-           update.state == mesos_pb2.TASK_FAILED:
-            _log.error("UNCAUGHT: Aborting because task %s (%s) is in unexpected state %s with message '%s'",
-                       update.task_id.value,
-                       calico_task,
-                       mesos_pb2.TaskState.Name(update.state),
-                       update.message)
-            driver.abort()
 
         # Explicitly acknowledge the update if implicit acknowledgements
         # are not being used.
