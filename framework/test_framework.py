@@ -123,13 +123,6 @@ class Task(object):
 
         return task
 
-    @property
-    def as_name(self):
-        """
-        Give a nice-name to identify the task
-        """
-        raise NotImplementedError
-
 
 class PingTask(Task):
     """
@@ -147,7 +140,7 @@ class PingTask(Task):
         read to identify the task type.
         """
         task = super(PingTask, self).as_new_mesos_task()
-        task.name = self.task_name
+        task.name = repr(self)
 
         task_type_label = task.labels.labels.add()
         task_type_label.key = "task_type"
@@ -159,12 +152,12 @@ class PingTask(Task):
 
         return task
 
-    @property
-    def task_name(self):
+
+    def __repr__(self):
         """
         Give a nice-name to identify the task
         """
-        return "ping %s from %s" % (self.target, self.ip)
+        return "PingTask(from=%s, to=%s)" % (self.ip, self.target)
 
 
 class CantPingTask(Task):
@@ -184,7 +177,7 @@ class CantPingTask(Task):
         read to identify the task type.
         """
         task = super(CantPingTask, self).as_new_mesos_task()
-        task.name = self.task_name
+        task.name = repr(self)
 
         task_type_label = task.labels.labels.add()
         task_type_label.key = "task_type"
@@ -196,12 +189,11 @@ class CantPingTask(Task):
 
         return task
 
-    @property
-    def task_name(self):
+    def __repr__(self):
         """
         Give a nice-name to identify the task
         """
-        return "shouldn't ping %s from %s" % (self.target, self.ip)
+        return "CantPing(from=%s, to=%s)" % (self.ip, self.target)
 
 
 class SleepTask(Task):
@@ -211,7 +203,7 @@ class SleepTask(Task):
         read to identify the task type.
         """
         task = super(SleepTask, self).as_new_mesos_task()
-        task.name = self.task_name
+        task.name = repr(self)
 
         task_type_label = task.labels.labels.add()
         task_type_label.key = "task_type"
@@ -219,12 +211,11 @@ class SleepTask(Task):
 
         return task
 
-    @property
-    def task_name(self):
+    def __repr__(self):
         """
         Give a nice-name to identify the task
         """
-        return "listen-at-%s" % self.ip
+        return "ListenTask(ip=%s)" % self.ip
 
 
 class State():
@@ -372,7 +363,7 @@ class TestScheduler(mesos.interface.Scheduler):
                         calico_task.slave_id = slave_id
                         calico_task.state = mesos_pb2.TASK_STAGING
 
-                        _log.info("\tLaunching Task %s (%s)", calico_task.task_id, calico_task.task_name)
+                        _log.info("\tLaunching Task %s (%s)", calico_task.task_id, calico_task)
                         _log.debug("\t Using offer %s", offer.id.value)
 
                         operation.launch.task_infos.extend([calico_task.as_new_mesos_task()])
@@ -414,7 +405,7 @@ class TestScheduler(mesos.interface.Scheduler):
 
         _log.info("TASK_UPDATE: Task %s (%s) is in state %s", \
             calico_task.task_id,
-             calico_task.task_name,
+             calico_task,
              mesos_pb2.TaskState.Name(calico_task.state))
 
         if self.state == State.LaunchSleepTasks:
@@ -475,7 +466,7 @@ class TestScheduler(mesos.interface.Scheduler):
            update.state == mesos_pb2.TASK_FAILED:
             _log.error("UNCAUGHT: Aborting because task %s (%s) is in unexpected state %s with message '%s'",
                        update.task_id.value,
-                       calico_task.task_name,
+                       calico_task,
                        mesos_pb2.TaskState.Name(update.state),
                        update.message)
             driver.abort()
