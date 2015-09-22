@@ -148,7 +148,7 @@ class PingTask(Task):
 
         target_label = task.labels.labels.add()
         target_label.key = "target"
-        target_label.value = self.target
+        target_label.value = self.target.ip
 
         return task
 
@@ -157,7 +157,7 @@ class PingTask(Task):
         """
         Give a nice-name to identify the task
         """
-        return "PingTask(from=%s, to=%s)" % (self.ip, self.target)
+        return "PingTask(from=%s, to=%s)" % (self.ip, self.target.ip)
 
 
 class CantPingTask(Task):
@@ -185,7 +185,7 @@ class CantPingTask(Task):
 
         target_label = task.labels.labels.add()
         target_label.key = "target"
-        target_label.value = self.target
+        target_label.value = self.target.ip
 
         return task
 
@@ -193,7 +193,7 @@ class CantPingTask(Task):
         """
         Give a nice-name to identify the task
         """
-        return "CantPing(from=%s, to=%s)" % (self.ip, self.target)
+        return "CantPing(from=%s, to=%s)" % (self.ip, self.target.ip)
 
 
 class SleepTask(Task):
@@ -255,10 +255,11 @@ class TestScheduler(mesos.interface.Scheduler):
         Running total of how many acks have been received by the executor
         """
 
-        self.tasks = [SleepTask(ip="192.168.1.0"),
-                      PingTask(ip="192.168.1.1", target="192.168.1.0"),
-                      PingTask(ip="192.168.1.2", target="192.168.1.0"),
-                      CantPingTask(ip="192.168.1.3", netgroup="netgroup_b", target="192.168.1.0")]
+        sleep_task = SleepTask(ip="192.168.1.0")
+        self.tasks = [sleep_task,
+                      PingTask(ip="192.168.1.1", target=sleep_task),
+                      PingTask(ip="192.168.1.2", target=sleep_task),
+                      CantPingTask(ip="192.168.1.3", netgroup="netgroup_b", target=sleep_task)]
         """
         The source-of-truth for task information. Whenever the framework receives
         an update or modifies configuration of tasks in mesos in any way, it should
