@@ -253,9 +253,9 @@ class TestScheduler(mesos.interface.Scheduler):
         Running total of how many acks have been received by the executor
         """
 
-        sleep_task = SleepTask(ip="192.168.1.0")
+        sleep_task = SleepTask()
         self.tasks = [sleep_task,
-                      PingTask(ip="192.168.1.1", target=sleep_task),
+                      PingTask(target=sleep_task),
                       PingTask(ip="192.168.1.2", target=sleep_task),
                       CantPingTask(ip="192.168.1.3", netgroup="netgroup_b", target=sleep_task)]
         """
@@ -376,21 +376,20 @@ class TestScheduler(mesos.interface.Scheduler):
         well as the current state of the framework.
         Lastly, we do general all-case actions, such as Executor ACKS
         """
-        # Ensure the Update's payload is correct. This confirms that communications
-        # is up between Framework<->Executor
-        if update.data != "data with a \0 byte":
-            _log.error("The update payload did not match! ")
-            _log.error("ACK Data:  %s", repr(str(update.data)))
-            _log.error("Sent by: %s", mesos_pb2.TaskStatus.Source.Name(update.source))
-            _log.error("Reason: %s", mesos_pb2.TaskStatus.Reason.Name(update.reason))
-            _log.error("Message: %s", update.message)
-            driver.abort()
-
         # Find the task which corresponds to the status update
         task_search = [task for task in self.tasks if task.task_id == update.task_id.value]
         if len(task_search) == 1:
             calico_task = task_search.pop()
             calico_task.state = update.state
+            if calico_task.ip:
+                # An update came from a task which already has an IP.
+                # Confirm that the IP is as expected
+                if calico_task.ip != str(update.data):
+                    _log.error("Task came up with unexpected IP")
+                    driver.abort()
+            else:
+                # An IPAM'd task is running, and is providing its IP
+                calico_task.ip = str(update.data)
         else:
             _log.error("Received Task Update from Unidentified TaskID: %s", update.task_id.value)
             driver.abort()

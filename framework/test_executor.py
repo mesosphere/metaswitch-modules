@@ -17,6 +17,7 @@
 import sys
 import threading
 import subprocess
+import re
 
 import mesos.interface
 from mesos.interface import mesos_pb2
@@ -30,7 +31,7 @@ class MyExecutor(mesos.interface.Executor):
             update = mesos_pb2.TaskStatus()
             update.task_id.value = task.task_id.value
             update.state = mesos_pb2.TASK_RUNNING
-            update.data = 'data with a \0 byte'
+            update.data = get_executor_ip()
             driver.sendStatusUpdate(update)
 
             labels = {label.key: label.value for label in task.labels.labels}
@@ -86,6 +87,14 @@ class MyExecutor(mesos.interface.Executor):
         In this case, we'll just echo the message back.
         """
         driver.sendFrameworkMessage(message)
+
+def get_executor_ip():
+    interface_dump = subprocess.check_output(["ifconfig", "eth0"])
+    PATTERN = r'inet addr:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'
+    result = re.findall(PATTERN, interface_dump)
+    return result.pop()
+
+
 
 if __name__ == "__main__":
     print "Starting executor"
