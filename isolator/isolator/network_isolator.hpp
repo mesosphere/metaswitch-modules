@@ -127,11 +127,6 @@ public:
     wait(process.get());
   }
 
-  virtual process::Future<Option<int>> namespaces()
-  {
-    return CLONE_NEWNET;
-  }
-
   virtual process::Future<Nothing> recover(
       const std::list<mesos::slave::ContainerState>& states,
       const hashset<ContainerID>& orphans)

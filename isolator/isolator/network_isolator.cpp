@@ -79,15 +79,9 @@ using mesos::slave::Isolator;
 const char* ipamClientKey = "ipam_command";
 const char* isolatorClientKey = "isolator_command";
 const char* pythonPath = "/usr/bin/python";
-const char* ipAddressLabelKey = "MesosContainerizer.NetworkSettings.IPAddress";
-
-const char* ipLabelKey = "network_isolator.ip";
-const char* netgroupsLabelKey = "network_isolator.netgroups";
 
 hashmap<ContainerID, Info*> *infos = NULL;
 hashmap<ExecutorID, ContainerID> *executorContainerIds = NULL;
-hashmap<ExecutorID, string> *executorNetgroups = NULL;
-hashmap<ExecutorID, string> *executorIPs = NULL;
 
 
 template <typename InProto, typename OutProto>
@@ -199,34 +193,48 @@ process::Future<Option<ContainerPrepareInfo>> NetworkIsolatorProcess::prepare(
 {
   LOG(INFO) << "NetworkIsolator::prepare for container: " << containerId;
 
-  if (!executorNetgroups->contains(executorInfo.executor_id())) {
+  if (!executorInfo.has_container()) {
+    LOG(INFO) << "NetworkIsolator:: executorInfo.container missing for "
+              << "container: " << containerId;
+    return None();
+  }
+
+  if (executorInfo.container().network_infos().size() > 1) {
+    return Failure(
+        "NetworkIsolator:: multiple NetworkInfos are not supported.");
+  }
+
+  NetworkInfo networkInfo = executorInfo.container().network_infos(0);
+
+  if (networkInfo.groups().size() <= 0) {
     return Failure(
         "netgroup label not found for executor: " +
         executorInfo.executor_id().value());
   }
 
+  if (networkInfo.has_protocol() && networkInfo.has_ip_address()) {
+    return Failure(
+        "NetworkIsolator: Both protocol and ip_address set in NetworkInfo.");
+  }
+
   string ipAddress;
   string uid = UUID::random().toString();
 
-  vector<string> netgroups =
-    strings::tokenize((*executorNetgroups)[executorInfo.executor_id()], ",");
-  if (netgroups.size() == 0) {
-    LOG(INFO) << "No netgroups assigned";
-    //TODO(kapil): Should we assign a "default" netgroup here?
+  vector<string> netgroups;
+  foreach (const string& group, networkInfo.groups()) {
+    netgroups.push_back(group);
   }
 
-  if (executorIPs->contains(executorInfo.executor_id())) {
-    ipAddress = (*executorIPs)[executorInfo.executor_id()];
+  // Static IP address provided by the framework; use it.
+  if (networkInfo.has_ip_address()) {
+    ipAddress = networkInfo.ip_address();
 
     IPAMReserveIPMessage ipamMessage;
     IPAMReserveIPMessage::Args* ipamArgs = ipamMessage.mutable_args();
     ipamArgs->set_hostname(hostname);
     ipamArgs->add_ipv4_addrs(ipAddress);
     ipamArgs->set_uid(uid);
-
-    foreach (const string& netgroup, netgroups) {
-      ipamArgs->add_netgroups(netgroup);
-    }
+    ipamArgs->mutable_netgroups()->CopyFrom(networkInfo.groups());
 
     LOG(INFO) << "Sending IP request command to IPAM";
     Try<IPAMResponse> response =
@@ -244,9 +252,7 @@ process::Future<Option<ContainerPrepareInfo>> NetworkIsolatorProcess::prepare(
     ipamArgs->set_num_ipv4(1);
     ipamArgs->set_uid(uid);
 
-    foreach (const string& netgroup, netgroups) {
-      ipamArgs->add_netgroups(netgroup);
-    }
+    ipamArgs->mutable_netgroups()->CopyFrom(networkInfo.groups());
 
     LOG(INFO) << "Sending IP request command to IPAM";
     Try<IPAMResponse> response =
@@ -262,6 +268,7 @@ process::Future<Option<ContainerPrepareInfo>> NetworkIsolatorProcess::prepare(
   }
 
   ContainerPrepareInfo prepareInfo;
+  prepareInfo.set_namespaces(CLONE_NEWNET);
 
   Environment::Variable* variable =
     prepareInfo.mutable_environment()->add_variables();
@@ -350,10 +357,6 @@ static Isolator* createNetworkIsolator(const Parameters& parameters)
     infos = new hashmap<ContainerID, Info*>();
     CHECK(executorContainerIds == NULL);
     executorContainerIds = new hashmap<ExecutorID, ContainerID>();
-    CHECK(executorNetgroups == NULL);
-    executorNetgroups = new hashmap<ExecutorID, string>();
-    CHECK(executorIPs == NULL);
-    executorIPs = new hashmap<ExecutorID, string>();
   }
 
   Try<Isolator*> result = NetworkIsolatorProcess::create(parameters);
@@ -370,29 +373,7 @@ static Isolator* createNetworkIsolator(const Parameters& parameters)
 class NetworkHook : public Hook
 {
 public:
-  virtual Result<Labels> slaveRunTaskLabelDecorator(
-      const TaskInfo& taskInfo,
-      const ExecutorInfo& executorInfo,
-      const FrameworkInfo& frameworkInfo,
-      const SlaveInfo& slaveInfo)
-  {
-    LOG(INFO) << "NetworkHook:: run task label decorator";
-    if (taskInfo.has_labels()) {
-      foreach (const Label& label, taskInfo.labels().labels()) {
-        if (label.key() == netgroupsLabelKey) {
-          (*executorNetgroups)[executorInfo.executor_id()] = label.value();
-          LOG(INFO) << "Label: <" << label.key() << ":" << label.value() << ">";
-        }
-        if (label.key() == ipLabelKey) {
-          (*executorIPs)[executorInfo.executor_id()] = label.value();
-          LOG(INFO) << "Label: <" << label.key() << ":" << label.value() << ">";
-        }
-      }
-    }
-    return None();
-  }
-
-  virtual Result<Labels> slaveTaskStatusLabelDecorator(
+  virtual Result<TaskStatus> slaveTaskStatusDecorator(
       const FrameworkID& frameworkId,
       const TaskStatus& status)
   {
@@ -417,19 +398,13 @@ public:
 
     const Info* info = (*infos)[containerId];
 
-    Labels labels;
-    if (status.has_labels()) {
-      labels.CopyFrom(status.labels());
-    }
+    TaskStatus result;
+    NetworkInfo* networkInfo =
+      result.mutable_container_status()->add_network_infos();
+    networkInfo->set_ip_address(info->ipAddress);
 
-    // Set IPAddress label.
-    Label* label = labels.add_labels();
-    label->set_key(ipAddressLabelKey);
-    label->set_value(info->ipAddress);
-
-    LOG(INFO) << "NetworkHook:: added label "
-              << label->key() << ":" << label->value();
-    return labels;
+    LOG(INFO) << "NetworkHook:: added ip address " << info->ipAddress;
+    return result;
   }
 };
 

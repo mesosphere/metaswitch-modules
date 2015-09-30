@@ -3,7 +3,7 @@ zookeeper:
   hostname: zookeeper
 
 mesosmaster:
-  image: mesosphere/mesos-modules-dev:latest
+  image: mesosphere/mesos-modules-dev:0.25.0-rc1
   hostname: mesosmaster
   command: /mesos/build/bin/mesos-master.sh
   environment:
