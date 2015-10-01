@@ -9,7 +9,7 @@ echo "Launching cluster with network isolation modules disabled..."
 
 pushd $DEMO_DIR/before
 docker-compose -p netmodules up -d
-docker-compose scale slave=2
+docker-compose -p netmodules scale slave=2
 popd
 
 $DEMO_DIR/add-container-route.sh
