@@ -1,4 +1,4 @@
-FROM spikecurtis/mesos-modules-dev-phusion:taskinfo-container
+FROM spikecurtis/mesos-modules-dev-phusion:taskinfo-container-new-networkinfo
 MAINTAINER Spike Curtis <spike@projectcalico.org>
 
 ####################

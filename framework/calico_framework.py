@@ -25,7 +25,11 @@ import mesos.interface
 from mesos.interface import mesos_pb2
 import mesos.native
 from calico_utils import _setup_logging
-from tasks import SleepTask, PingTask, NetcatListenTask, NetcatSendTask
+from tasks import (TaskUpdateError,
+                   SleepTask,
+                   PingTask,
+                   NetcatListenTask,
+                   NetcatSendTask)
 from constants import LOGFILE, TASK_CPUS, TASK_MEM, \
     BAD_TASK_STATES, TEST_TIMEOUT
 
@@ -407,7 +411,6 @@ class TestScheduler(mesos.interface.Scheduler):
             test.print_report()
             print "\n"
 
-
     def statusUpdate(self, driver, update):
         """
         Triggered when the Framework receives a task Status Update from the
@@ -422,20 +425,15 @@ class TestScheduler(mesos.interface.Scheduler):
                 "FATAL: Received Task Update from Unidentified TaskID: %s",
                 update.task_id.value)
             driver.abort()
+            return
 
-        # Update the calico_task with info from TaskInfo
-        calico_task.state = update.state
-        for network_info in update.container_status.network_infos:
-            if calico_task.ip:
-                if network_info.ip_address != calico_task.ip:
-                    self.kill_test(calico_task.test,
-                                   "Assigned IP (%s) doesn't match "
-                                   "desired IP of %s" % \
-                    (network_info.ip_address, calico_task))
-            else:
-                calico_task.ip = network_info.ip_address
+        try:
+            calico_task.process_update(update)
+        except TaskUpdateError as e:
+            self.kill_test(calico_task.test, str(e))
 
-        _log.info("TASK_UPDATE - %s: %s", \
+
+        _log.info("TASK_UPDATE - %s: %s",
                   mesos_pb2.TaskState.Name(calico_task.state),
                   calico_task)
 

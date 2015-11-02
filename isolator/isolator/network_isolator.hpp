@@ -59,15 +59,15 @@ namespace mesos {
 
 struct Info
 {
-  Info(const std::string& _ipAddress,
+  Info(const std::vector<std::string>& _ipAddresses,
        const std::vector<std::string>& _netgroups,
        const std::string& _uid)
-    : ipAddress(_ipAddress),
+    : ipAddresses(_ipAddresses),
       netgroups(_netgroups),
       uid(_uid) {}
 
-  // The IP address to assign to the container, or NONE for auto-assignment.
-  const std::string ipAddress;
+  // The IP addresses to assign to the container.
+  const std::vector<std::string> ipAddresses;
 
   // The network profile name to assign to the container, or NONE for the
   // default.
