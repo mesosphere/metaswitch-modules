@@ -88,7 +88,7 @@ class ExecutorTask(object):
         print "Running task %s" % self.id
         self.send_update(mesos_pb2.TASK_RUNNING)
 
-        print subprocess.check_output(["ifconfig"])
+        print subprocess.check_output(["ip", "addr"])
 
     def run_task(self):
         raise NotImplementedError

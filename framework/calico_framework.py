@@ -329,6 +329,12 @@ class TestScheduler(mesos.interface.Scheduler):
         Key is the slave_id. Value is the test.
         """
 
+        self.unreserved_offers_by_slave_id = {}
+        """
+        Dictionary of offers by slave ID.  Offers in this dictionary are from
+        slaves that are not running any tests.
+        """
+
     def all_tasks(self):
         """
         Get all tasks across all tests.
@@ -363,7 +369,6 @@ class TestScheduler(mesos.interface.Scheduler):
         """
         Triggered when the framework is offered resources by mesos.
         """
-        unreserved_offers_by_slave_id = {}
 
         # Send offer to reserved test or unreserved pool
         for offer in offers:
@@ -372,20 +377,22 @@ class TestScheduler(mesos.interface.Scheduler):
                 self.test_by_slave_id[new_offer.slave_id].launch({new_offer.slave_id: new_offer})
                 _log.info("New offer %s Sent to reserved slave", new_offer)
             except KeyError:
-                unreserved_offers_by_slave_id[new_offer.slave_id] = new_offer
+                self.unreserved_offers_by_slave_id[
+                    new_offer.slave_id] = new_offer
                 _log.info("New offer %s Moved to unreserved pool", new_offer)
 
         # Loop through unreserved offers and offer to unstarted tests
-        if unreserved_offers_by_slave_id:
+        if self.unreserved_offers_by_slave_id:
             _log.info("Offering %d unreserved offers to Unstarted Tests",
-                      len(unreserved_offers_by_slave_id))
+                      len(self.unreserved_offers_by_slave_id))
             for test in self.tests:
                 # Skip all running/complete tests
                 if test.state is not TestState.Unstarted:
                     continue
 
                 _log.info("\t%s", test)
-                reserved_offers_by_slave_id = test.can_run_on(unreserved_offers_by_slave_id)
+                reserved_offers_by_slave_id = test.can_run_on(
+                    self.unreserved_offers_by_slave_id)
                 if reserved_offers_by_slave_id:
                     test.state = TestState.Running
                     test.restart_timeout()
@@ -395,13 +402,9 @@ class TestScheduler(mesos.interface.Scheduler):
                         self.test_by_slave_id[slave_id] = test
 
                         # Remove from unreserved pool
-                        del(unreserved_offers_by_slave_id[slave_id])
+                        del(self.unreserved_offers_by_slave_id[slave_id])
 
                     test.launch(reserved_offers_by_slave_id)
-
-        for offer in unreserved_offers_by_slave_id.values():
-            _log.debug("Declining unclaimed offer: %s" % offer)
-            driver.declineOffer(offer.offer.id)
 
     def report_results_and_exit(self, error=None):
         if error:
@@ -491,7 +494,14 @@ class TestScheduler(mesos.interface.Scheduler):
             driver.acknowledgeStatusUpdate(update)
 
     def offerRescinded(self, driver, offerId):
-        _log.error("An unknown offer was rescinded.")
+        _log.error("Offer %s was rescinded.", offerId)
+        # We expect this to be rare, so a linear walk through retained offers
+        # is fine.  Alternative would be a second dict, which adds too much
+        # complexity.
+        for slave_id, offer in self.unreserved_offers_by_slave_id.items():
+            if offer.offer_id == offerId:
+                del(self.unreserved_offers_by_slave_id[slave_id])
+                break
 
     def run_healthchecks(self):
         a_test_is_running = False
@@ -531,10 +541,9 @@ class TestScheduler(mesos.interface.Scheduler):
 
 
 def get_host_ip():
-    interface_dump = subprocess.check_output(["ifconfig", "eth0"])
-    re_find_ip = r'inet addr:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'
-    result = re.findall(re_find_ip, interface_dump)
-    return result.pop()
+    ip = subprocess.Popen('ip route get 8.8.8.8 | head -1 | cut -d\' \' -f8',
+                          shell=True, stdout=subprocess.PIPE).stdout.read()
+    return ip.strip()
 
 
 class NotEnoughResources(Exception):
