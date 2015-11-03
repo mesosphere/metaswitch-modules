@@ -640,6 +640,34 @@ if __name__ == "__main__":
                     name=test_name)
     scheduler.tests.append(test)
 
+    test_name = "Multiple IPs Can Ping"
+    sleep_task = SleepTask(netgroups=['A'], auto_ipv4=2)
+    ping_task = PingTask(netgroups=['A', 'D'],
+                         can_ping_targets=[sleep_task],
+                         auto_ipv4=3)
+    test = TestCase([sleep_task, ping_task], name=test_name)
+    scheduler.tests.append(test)
+
+    test_name = "Static IPs"
+    sleep_task = SleepTask(requested_ips=["192.168.28.23"],
+                           netgroups=['A'],
+                           auto_ipv4=2)
+    ping_task = PingTask(requested_ips=["192.168.28.34"],
+                         netgroups=['A', 'D'],
+                         can_ping_targets=[sleep_task])
+    test = TestCase([sleep_task, ping_task], name=test_name)
+    scheduler.tests.append(test)
+
+    test_name = "Mix static and assigned IPs"
+    sleep_task = SleepTask(requested_ips=["192.168.27.23",
+                                          "192.168.27.34"],
+                           netgroups=['A'],
+                           auto_ipv4=2)
+    ping_task = PingTask(netgroups=['A', 'D'],
+                         can_ping_targets=[sleep_task])
+    test = TestCase([sleep_task, ping_task], name=test_name)
+    scheduler.tests.append(test)
+
     # Same IPs fail
     # TODO: fail test individually on isolator error
     # sleep_task_a = SleepTask(ip="192.168.254.1")
