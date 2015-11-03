@@ -216,7 +216,7 @@ process::Future<Option<ContainerPrepareInfo>> NetworkIsolatorProcess::prepare(
   }
   if (networkInfo.has_ip_address()) {
     return Failure(
-      "NetworkIsolator: NetworkInfo.ip_address is deprecated and" +
+      "NetworkIsolator: NetworkInfo.ip_address is deprecated and"
       " unsupported.");
   }
 
@@ -234,7 +234,7 @@ process::Future<Option<ContainerPrepareInfo>> NetworkIsolatorProcess::prepare(
   int numIPv4 = 0;
   foreach (NetworkInfo::IPAddress ipAddress, networkInfo.ip_addresses()) {
     if (ipAddress.has_ip_address() && ipAddress.has_protocol()) {
-      return Failure("NetworkIsolator: Cannot include both ip_address and " +
+      return Failure("NetworkIsolator: Cannot include both ip_address and "
                      "protocol in a request.");
     }
     if (ipAddress.has_ip_address()) {
