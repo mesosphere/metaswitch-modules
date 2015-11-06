@@ -4,7 +4,9 @@ MAINTAINER Spike Curtis <spike@projectcalico.org>
 ####################
 # Mesos-DNS
 ####################
-RUN wget https://dl.dropboxusercontent.com/u/4550074/mesos/mesos-dns+50fc45a9 -O /usr/bin/mesos-dns && \
+RUN curl -LO https://github.com/mesosphere/mesos-dns/releases/download/v0.4.0/mesos-dns-v0.4.0-linux-amd64.gz && \
+    gunzip mesos-dns-v0.4.0-linux-amd64.gz && \
+    mv mesos-dns-v0.4.0-linux-amd64 /usr/bin/mesos-dns && \
     chmod +x /usr/bin/mesos-dns
 
 ###################
@@ -18,7 +20,7 @@ RUN apt-get update -qq && apt-get install -qqy \
     iptables
 
 # Install Docker from Docker Inc. repositories.
-RUN curl -sSL https://get.docker.com/ubuntu/ | sh
+RUN curl -sSL https://get.docker.com/ | sh
 
 # Define additional metadata for our image.
 VOLUME /var/lib/docker
