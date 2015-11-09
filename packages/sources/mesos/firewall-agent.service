@@ -1,0 +1,15 @@
+[Unit]
+Description=firewall-agent
+After=firewalld.service
+Requires=firewalld.service
+
+[Service]
+User=root
+PermissionsStartOnly=true
+ExecStartPre=/usr/bin/firewall-cmd --zone=public --add-port=179/tcp --permanent
+ExecStartPre=/usr/bin/firewall-cmd --zone=public --add-port=5051/tcp --permanent
+ExecStart=/usr/bin/firewall-cmd --reload
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

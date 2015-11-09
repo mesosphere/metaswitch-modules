@@ -76,6 +76,8 @@ ADD ./sources/mesos/quorum /root/rpmbuild/SOURCES/quorum
 ADD ./sources/mesos/work_dir /root/rpmbuild/SOURCES/work_dir
 ADD ./sources/mesos/mesos-init-wrapper /root/rpmbuild/SOURCES/mesos-init-wrapper
 ADD ./sources/mesos/zk /root/rpmbuild/SOURCES/zk
+ADD ./sources/mesos/firewall-agent.service /root/rpmbuild/SOURCES/firewall-agent.service
+ADD ./sources/mesos/firewall-master.service /root/rpmbuild/SOURCES/firewall-master.service
 
 # MESOS
 ADD ./mesos.spec /root/mesos.spec

@@ -1,0 +1,18 @@
+[Unit]
+Description=firewall-master
+After=firewalld.service
+Requires=firewalld.service
+
+[Service]
+User=root
+PermissionsStartOnly=true
+ExecStartPre=/usr/bin/firewall-cmd --zone=public --add-port=2181/tcp --permanent
+ExecStartPre=/usr/bin/firewall-cmd --zone=public --add-port=5050/tcp --permanent
+ExecStartPre=/usr/bin/firewall-cmd --zone=public --add-port=2379/tcp --permanent
+ExecStartPre=/usr/bin/firewall-cmd --zone=public --add-port=4001/tcp --permanent
+ExecStartPre=/usr/bin/firewall-cmd --zone=public --add-port=8080/tcp --permanent
+ExecStart=/usr/bin/firewall-cmd --reload
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

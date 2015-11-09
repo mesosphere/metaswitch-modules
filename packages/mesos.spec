@@ -17,6 +17,8 @@ Source6:       quorum
 Source7:       work_dir
 Source8:       mesos-init-wrapper
 Source9:       zk
+Source10:      firewall-agent.service
+Source11:      firewall-master.service
 
 BuildRequires: libtool
 BuildRequires: automake
@@ -182,6 +184,7 @@ install -m 0644 %{SOURCE3} %{buildroot}%{_sysconfdir}/default/
 
 mkdir -p %{buildroot}%{_unitdir}
 install -m 0644 %{SOURCE4} %{SOURCE5} %{buildroot}%{_unitdir}/
+install -m 0644 %{SOURCE10} %{SOURCE11} %{buildroot}%{_unitdir}/
 
 mkdir -p %{buildroot}%{_sysconfdir}/%{name}-master
 install -m 0644 %{SOURCE6} %{SOURCE7} %{buildroot}%{_sysconfdir}/%{name}-master/
@@ -210,6 +213,8 @@ mkdir -p -m0755 %{buildroot}/%{_var}/lib/%{name}
 %attr(0755,mesos,mesos) %{_var}/lib/%{name}/
 %config(noreplace) %{_sysconfdir}/default/%{name}*
 %{_unitdir}/%{name}*.service
+%{_unitdir}/firewall-agent.service
+%{_unitdir}/firewall-master.service
 %{_sysconfdir}/%{name}-master/*
 %{_sysconfdir}/%{name}-slave
 %{_sysconfdir}/%{name}/*
@@ -251,14 +256,14 @@ fi
 exit 0
 
 %post
-%systemd_post %{name}-slave.service %{name}-master.service
+%systemd_post %{name}-slave.service %{name}-master.service firewall-agent.service firewall-master.service
 /sbin/ldconfig
 
 %preun
-%systemd_preun %{name}-slave.service %{name}-master.service
+%systemd_preun %{name}-slave.service %{name}-master.service firewall-agent.service firewall-master.service
 
 %postun
-%systemd_postun_with_restart %{name}-slave.service %{name}-master.service
+%systemd_postun_with_restart %{name}-slave.service %{name}-master.service firewall-agent.service firewall-master.service
 /sbin/ldconfig
 
 
