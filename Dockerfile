@@ -4,9 +4,8 @@ MAINTAINER Spike Curtis <spike@projectcalico.org>
 ####################
 # Mesos-DNS
 ####################
-RUN curl -LO https://github.com/mesosphere/mesos-dns/releases/download/v0.4.0/mesos-dns-v0.4.0-linux-amd64.gz && \
-    gunzip mesos-dns-v0.4.0-linux-amd64.gz && \
-    mv mesos-dns-v0.4.0-linux-amd64 /usr/bin/mesos-dns && \
+RUN curl -LO https://github.com/Symmetric/mesos-dns/releases/download/v0.5.0alpha/mesos-dns && \
+    mv mesos-dns /usr/bin/mesos-dns && \
     chmod +x /usr/bin/mesos-dns
 
 ###################
