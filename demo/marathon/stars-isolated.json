@@ -8,9 +8,10 @@
       "cpus": 0.1,
       "mem": 64.0,
       "ports": [],
-      "labels": {
-      "network_isolator.netgroups": "star-1"
-      }
+      "network": [{
+        "ipAddresses": [{}],
+        "groups": ["star-1"]
+      }]
     },
     {
       "id": "probe-b",
@@ -19,9 +20,10 @@
       "cpus": 0.1,
       "mem": 64.0,
       "ports": [],
-      "labels": {
-        "network_isolator.netgroups": "star-1"
-      }
+      "network": [{
+        "ipAddresses": [{}],
+        "groups": ["star-1"]
+      }]
     },
     {
       "id": "probe-c",
@@ -30,9 +32,10 @@
       "cpus": 0.1,
       "mem": 64.0,
       "ports": [],
-      "labels": {
-        "network_isolator.netgroups": "star-2"
-      }
+      "network": [{
+        "ipAddresses": [{}],
+        "groups": ["star-2"]
+      }]
     },
     {
       "id": "probe-d",
@@ -41,9 +44,10 @@
       "cpus": 0.1,
       "mem": 64.0,
       "ports": [],
-      "labels": {
-        "network_isolator.netgroups": "star-2"
-      }
+      "network": [{
+        "ipAddresses": [{}],
+        "groups": ["star-2"]
+      }]
     },
     {
       "id": "collect",
@@ -55,10 +59,10 @@
       "cpus": 0.2,
       "mem": 64.0,
       "ports": [],
-      "labels": {
-        "network_isolator.netgroups": "star-1,star-2,public",
-        "network_isolator.ip": "192.168.255.253"
-      }
+      "network": [{
+        "ipAddresses": [{"ipAddress": "192.168.255.252"}],
+        "groups": ["public", "star-1", "star-2"]
+      }]
     }
   ]
 }
