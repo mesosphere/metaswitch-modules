@@ -19,9 +19,7 @@
       "cpus": 0.1,
       "mem": 64.0,
       "ports": [],
-      "labels": {
-        "network_isolator.netgroups": "default"
-      }
+      "network": [{"ipAddresses": [{}]}]
     },
     {
       "id": "probe-c",
@@ -30,9 +28,7 @@
       "cpus": 0.1,
       "mem": 64.0,
       "ports": [],
-      "labels": {
-        "network_isolator.netgroups": "default"
-      }
+      "network": [{"ipAddresses": [{}]}]
     },
     {
       "id": "probe-d",
@@ -41,9 +37,7 @@
       "cpus": 0.1,
       "mem": 64.0,
       "ports": [],
-      "labels": {
-        "network_isolator.netgroups": "default"
-      }
+      "network": [{"ipAddresses": [{}]}]
     },
     {
       "id": "collect",
@@ -55,10 +49,7 @@
       "cpus": 0.2,
       "mem": 64.0,
       "ports": [],
-      "labels": {
-        "network_isolator.netgroups": "default",
-        "network_isolator.ip": "192.168.255.253"
-      }
+      "network": [{"ipAddresses": [{"ipAddress": "192.168.255.253"}]}]
     }
   ]
 }

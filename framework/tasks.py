@@ -5,27 +5,58 @@ from constants import BAD_TASK_STATES, UNFINISHED_TASK_STATES
 from constants import TASK_CPUS, TASK_MEM
 
 
+class TaskUpdateError(Exception):
+    """
+    There was a problem with a TaskUpdate.
+    """
+    pass
+
+
 class Task(object):
-    def __init__(self, ip=None, netgroups=[], slave=None, calico=True,
-                 default_executor=False, *args, **kwargs):
-        if ip:
+    def __init__(self,
+                 requested_ips=None,
+                 netgroups=None,
+                 slave=None,
+                 calico=True,
+                 default_executor=False,
+                 *args, **kwargs):
+        if requested_ips:
             assert calico, "Must use Calico Networking if spawning task " \
-                           "with specific IP"
+                           "with specific IPs"
+            self.requested_ips = requested_ips
+        else:
+            self.requested_ips = []
+
+        if not calico:
+            assert "auto_ipv4" not in kwargs, "Must use Calico Networking if" \
+                                              " spawning task with " \
+                                              "per-container IPs."
+            assert "auto_ipv6" not in kwargs, "Must use Calico Networking if" \
+                                              " spawning task with " \
+                                              "per-container IPs."
+            self.auto_ipv6 = 0
+            self.auto_ipv4 = 0
+        else:
+            # Default to a single IPv4 address if not explicitly specified.
+            self.auto_ipv4 = kwargs.get("auto_ipv4", 1)
+            self.auto_ipv6 = kwargs.get("auto_ipv6", 0)
+
         if netgroups:
             assert calico, "Can't specify netgroups unless " \
                            "using Calico Networking"
             assert type(netgroups) == list, "Must specify a list of netgroups"
+            self.netgroups = netgroups
+        else:
+            self.netgroups = []
 
         self.slave = slave
         self.state = None
         self.task_id = None
         self.executor_id = None
         self.slave_id = None
-        self.ip = ip
-        self.netgroups = netgroups
         self.calico = calico
         self.default_executor = default_executor
-
+        self.ip_addresses = []
 
     def as_new_mesos_task(self):
         """
@@ -70,16 +101,64 @@ class Task(object):
 
             for netgroup in self.netgroups:
                 network_info.groups.append(netgroup)
-            if self.ip:
-                network_info.ip_address = self.ip
-            else:
-                network_info.protocol = mesos_pb2.NetworkInfo.IPv4
+
+            for ip in self.requested_ips:
+                network_info.ip_addresses.add().ip_address = ip
+
+            for _ in range(self.auto_ipv4):
+                network_info.ip_addresses.add().protocol = \
+                    mesos_pb2.NetworkInfo.IPv4
+            for _ in range(self.auto_ipv6):
+                network_info.ip_addresses.add().protocol = \
+                    mesos_pb2.NetworkInfo.IPv4
 
         return task
+
+    def process_update(self, update):
+
+        # Update the calico_task with info from TaskInfo
+        self.state = update.state
+
+        assert len(update.container_status.network_infos) == 1
+        network_info = update.container_status.network_infos[0]
+        actual_ips = [ipa.ip_address for ipa in network_info.ip_addresses]
+
+        # Check requested IPs.
+        for ip in self.requested_ips:
+            if ip not in actual_ips:
+                raise TaskUpdateError("Requested IP %s wasn't assigned." % ip)
+
+        # Check total number of IPs.
+        if self.calico:
+            expected = (len(self.requested_ips) +
+                        self.auto_ipv4 +
+                        self.auto_ipv6)
+            if len(actual_ips) != expected:
+                raise TaskUpdateError(
+                    "Expected %d static, %d IPv4, and %d IPv6 but got %s." %
+                    (len(self.requested_ips),
+                     self.auto_ipv4,
+                     self.auto_ipv6,
+                     actual_ips))
+
+        # If we already have IPs, check they haven't changed.
+        if self.ip_addresses and self.ip_addresses != actual_ips:
+            raise TaskUpdateError("Previously got %s IPs, not have %s IPs." %
+                                  (self.ip_addresses, actual_ips))
+
+        # If we make it this far, no error.
+        self.ip_addresses = actual_ips
 
     @property
     def dependencies_are_met(self):
         raise NotImplementedError
+
+    @property
+    def ip(self):
+        if self.ip_addresses:
+            return self.ip_addresses[0]
+        else:
+            return None
 
 
 class PingTask(Task):
@@ -132,6 +211,12 @@ class PingTask(Task):
 
     def as_new_mesos_task(self):
         task = super(PingTask, self).as_new_mesos_task()
+        ping_ips = []
+        for target in self.can_ping_targets:
+            ping_ips.extend(target.ip_addresses)
+        cant_ping_ips = []
+        for target in self.cant_ping_targets:
+            cant_ping_ips.extend(target.ip_addresses)
         if not self.default_executor:
             task_type_label = task.labels.labels.add()
             task_type_label.key = "task_type"
@@ -139,13 +224,13 @@ class PingTask(Task):
 
             can_ping_label = task.labels.labels.add()
             can_ping_label.key = "can_ping"
-            can_ping_label.value = ",".join([target.ip for target in self.can_ping_targets])
+            can_ping_label.value = ",".join(ping_ips)
 
             cant_ping_label = task.labels.labels.add()
             cant_ping_label.key = "cant_ping"
-            cant_ping_label.value = ",".join([target.ip for target in self.cant_ping_targets])
+            cant_ping_label.value = ",".join(cant_ping_ips)
         else:
-            command = " && ".join(["ping -c 1 %s" % target.ip for target in self.can_ping_targets])
+            command = " && ".join(["ping -c 1 %s" % ip for ip in ping_ips])
             task.command.value = command
         return task
 
@@ -169,7 +254,6 @@ class NetcatListenTask(Task):
     def __init__(self, *args, **kwargs):
         super(NetcatListenTask, self).__init__(calico=False, *args, **kwargs)
         self.port = None
-        self.ip = None
 
     def __repr__(self):
         """
@@ -226,11 +310,16 @@ class NetcatSendTask(Task):
 
         can_cat_label = task.labels.labels.add()
         can_cat_label.key = "can_cat"
-        can_cat_label.value = ",".join([" ".join([target.ip, str(target.port)]) \
-                                        for target in self.can_cat_targets])
+        target_strs = []
+        for target in self.can_cat_targets:
+            for ip in target.ip_addresses:
+                target_strs.append(" ".join([ip, str(target.port)]))
+        can_cat_label.value = ",".join(target_strs)
 
         if self.default_executor:
-            task.command.value = "printf hi | nc %s %s" % (target.ip, target.port)
+            shell_cmds = ["printf hi | nc %s" % target_str
+                          for target_str in target_strs]
+            task.command.value = " && ".join(shell_cmds)
         return task
 
     @property
