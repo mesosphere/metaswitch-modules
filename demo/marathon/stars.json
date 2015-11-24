@@ -1,5 +1,5 @@
 {
-  "id": "star",
+  "id": "/star",
   "apps": [
     {
       "id": "probe-a",
@@ -7,9 +7,10 @@
       "cmd": "chmod u+x ./star-probe* && ./star-probe-v0.5.0-linux-x86_64 --urls=http://probe-b-star.marathon.mesos:9000/status,http://probe-c-star.marathon.mesos:9000/status,http://probe-d-star.marathon.mesos:9000/status",
       "cpus": 0.1,
       "mem": 64.0,
-      "ports": [],
-      "labels": {
-        "network_isolator.netgroups": "default"
+      "network": {
+        "labels": {
+          "network_isolator.netgroups": "default"
+        }
       }
     },
     {
@@ -18,8 +19,7 @@
       "cmd": "chmod u+x ./star-probe* && ./star-probe-v0.5.0-linux-x86_64 --urls=http://probe-a-star.marathon.mesos:9000/status,http://probe-c-star.marathon.mesos:9000/status,http://probe-d-star.marathon.mesos:9000/status",
       "cpus": 0.1,
       "mem": 64.0,
-      "ports": [],
-      "network": [{"ipAddresses": [{}]}]
+      "network": {}
     },
     {
       "id": "probe-c",
@@ -27,8 +27,7 @@
       "cmd": "chmod u+x ./star-probe* && ./star-probe-v0.5.0-linux-x86_64 --urls=http://probe-a-star.marathon.mesos:9000/status,http://probe-b-star.marathon.mesos:9000/status,http://probe-d-star.marathon.mesos:9000/status",
       "cpus": 0.1,
       "mem": 64.0,
-      "ports": [],
-      "network": [{"ipAddresses": [{}]}]
+      "network": {}
     },
     {
       "id": "probe-d",
@@ -36,8 +35,7 @@
       "cmd": "chmod u+x ./star-probe* && ./star-probe-v0.5.0-linux-x86_64 --urls=http://probe-a-star.marathon.mesos:9000/status,http://probe-b-star.marathon.mesos:9000/status,http://probe-c-star.marathon.mesos:9000/status",
       "cpus": 0.1,
       "mem": 64.0,
-      "ports": [],
-      "network": [{"ipAddresses": [{}]}]
+      "network": {}
     },
     {
       "id": "collect",
@@ -48,8 +46,9 @@
       "cmd": "chmod u+x ./star-collect* && ./star-collect-v0.5.0-linux-x86_64 --resources-file=star-resources.json",
       "cpus": 0.2,
       "mem": 64.0,
-      "ports": [],
-      "network": [{"ipAddresses": [{"ipAddress": "192.168.255.253"}]}]
+      "ports": [9001],
+      "requirePorts": true,
+      "acceptedResourceRoles": ["public"]
     }
   ]
 }

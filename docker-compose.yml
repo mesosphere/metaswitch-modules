@@ -11,6 +11,7 @@ mesosmaster:
     - MESOS_WORK_DIR=/var/lib/mesos
     - MESOS_LOG_DIR=/var/log
     - MESOS_ZK=zk://zookeeper:2181/mesos
+    - MESOS_ROLES=public
   volumes:
     - /var/log/mesos:/var/log/mesos
     - ./framework/:/framework
@@ -18,6 +19,40 @@ mesosmaster:
     - "5050:5050"
   links:
     - zookeeper
+
+proxy:
+  image: svendowideit/ambassador
+  environment:
+    - COLLECTOR_PORT_9001_TCP=tcp://collect-star-iso.marathon.mesos:9001
+  dns:
+   - 192.168.255.254
+  ports:
+    - "9001:9001"
+
+slavepublic:
+  build: .
+  privileged: true
+  links:
+    - mesosmaster
+    - zookeeper
+    - etcd
+  volumes:
+    - /var/log/mesos:/var/log/mesos
+    - ./framework:/framework
+  environment:
+    - MESOS_MASTER=zk://zookeeper:2181/mesos
+    - MESOS_EXECUTOR_REGISTRATION_TIMEOUT=5mins
+    - MESOS_CONTAINERIZERS=mesos
+    - MESOS_ISOLATOR=cgroups/cpu,cgroups/mem
+    - MESOS_LOG_DIR=/var/log
+    - MESOS_RESOURCES=ports:[9000-31100]
+    - MESOS_DEFAULT_ROLE=public
+    - MESOS_MODULES=file:///calico/modules.json
+    - MESOS_ISOLATION=com_mesosphere_mesos_NetworkIsolator
+    - MESOS_HOOKS=com_mesosphere_mesos_NetworkHook
+    - ETCD_AUTHORITY=etcd:4001
+  dns:
+   - 192.168.255.254
 
 slave:
   build: .
@@ -35,7 +70,7 @@ slave:
     - MESOS_CONTAINERIZERS=mesos
     - MESOS_ISOLATOR=cgroups/cpu,cgroups/mem
     - MESOS_LOG_DIR=/var/log
-    - MESOS_RESOURCES=ports(*):[31000-31100]
+    - MESOS_RESOURCES=ports(*):[30000-31100]
     - MESOS_MODULES=file:///calico/modules.json
     - MESOS_ISOLATION=com_mesosphere_mesos_NetworkIsolator
     - MESOS_HOOKS=com_mesosphere_mesos_NetworkHook
@@ -44,11 +79,13 @@ slave:
    - 192.168.255.254
 
 marathon:
-  image: mesosphere/marathon:v0.9.1
+  image: mesosphere/marathon-test:aa17498a7da2
   environment:
     - MARATHON_MASTER=zk://zookeeper:2181/mesos
     - MARATHON_ZK=zk://zookeeper:2181/marathon
     - MARATHON_MAX_TASKS_PER_OFFER=32
+    - MARATHON_MESOS_ROLE=public
+  command: "--default_accepted_resource_roles *"
   ports:
     - "8080:8080"
   links:
