@@ -99,7 +99,7 @@ static Try<OutProto> runCommand(const string& path, const InProto& command)
       process::Subprocess::PIPE());
   CHECK_SOME(child);
 
-  string jsonCommand = stringify(JSON::Protobuf(command));
+  string jsonCommand = stringify(JSON::protobuf(command));
 
   LOG(INFO) << "Sending command to " + path + ": " << jsonCommand;
   process::io::write(child.get().in().get(), jsonCommand);
@@ -232,7 +232,7 @@ process::Future<Option<ContainerPrepareInfo>> NetworkIsolatorProcess::prepare(
 
   // Counter of IPs to auto assign.
   int numIPv4 = 0;
-  foreach (NetworkInfo::IPAddress ipAddress, networkInfo.ip_addresses()) {
+  foreach (const NetworkInfo::IPAddress& ipAddress, networkInfo.ip_addresses()) {
     if (ipAddress.has_ip_address() && ipAddress.has_protocol()) {
       return Failure("NetworkIsolator: Cannot include both ip_address and "
                      "protocol in a request.");

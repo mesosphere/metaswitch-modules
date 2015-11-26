@@ -1,11 +1,11 @@
-FROM spikecurtis/mesos-modules-dev-phusion:0.26.0-pre
+FROM djosborne/mesos-modules-dev-phusion:0.26.0-rc1
 MAINTAINER Spike Curtis <spike@projectcalico.org>
 
 ####################
 # Mesos-DNS
 ####################
-RUN curl -LO https://github.com/Symmetric/mesos-dns/releases/download/v0.5.0alpha/mesos-dns && \
-    mv mesos-dns /usr/bin/mesos-dns && \
+RUN curl -LO https://github.com/mesosphere/mesos-dns/releases/download/v0.5.0/mesos-dns-v0.5.0-linux-amd64 && \
+    mv mesos-dns-v0.5.0-linux-amd64 /usr/bin/mesos-dns && \
     chmod +x /usr/bin/mesos-dns
 
 ###################
