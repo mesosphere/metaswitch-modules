@@ -1,4 +1,4 @@
-FROM djosborne/mesos-modules-dev-phusion:0.26.0-rc1
+FROM djosborne/mesos-modules-dev-phusion:0.26.0-rc3
 MAINTAINER Spike Curtis <spike@projectcalico.org>
 
 ####################
