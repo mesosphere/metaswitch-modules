@@ -50,7 +50,7 @@ From the `net-modules` directory
 
 This first demo shows what life is like with "vanilla" Mesos: port conflicts and no network isolation.
 
-    ./demo/launch-cluster-before.sh
+    ./demo/launch-cluster.sh
 
 Wait until the cluster is up, then visit http://localhost:5050/
 
@@ -64,15 +64,11 @@ Show the Mesos status page, and watch for the "collect" task to start.  Then vis
 
 Tear down the cluster for your next demo.
 
-    ./demo/stop-cluster-before.sh
+    ./demo/stop-probes-before.sh
 
 ## Run the Calico w/o isolation demo
 
 This demo shows Calico without network isolation.  All probes can reach one another.
-
-    ./demo/launch-cluster.sh
-
-Wait until the cluster is up.  Then
 
     ./demo/launch-probes.sh
 
