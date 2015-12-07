@@ -7,7 +7,12 @@
       "cmd": "chmod u+x ./star-probe* && ./star-probe-v0.5.0-linux-x86_64 --urls=http://probe-b-star.marathon.mesos:9000/status,http://probe-c-star.marathon.mesos:9000/status,http://probe-d-star.marathon.mesos:9000/status",
       "cpus": 0.1,
       "mem": 64.0,
-      "network": {
+      "ipAddress": {
+        "discovery": {
+          "ports": [
+            { "name": "status", "number": 9000, "protocol": "tcp" }
+          ]
+        },
         "labels": {
           "network_isolator.netgroups": "default"
         }
@@ -19,7 +24,13 @@
       "cmd": "chmod u+x ./star-probe* && ./star-probe-v0.5.0-linux-x86_64 --urls=http://probe-a-star.marathon.mesos:9000/status,http://probe-c-star.marathon.mesos:9000/status,http://probe-d-star.marathon.mesos:9000/status",
       "cpus": 0.1,
       "mem": 64.0,
-      "network": {}
+      "ipAddress": {
+        "discovery": {
+          "ports": [
+            { "name": "status", "number": 9000, "protocol": "tcp" }
+          ]
+        }
+      }
     },
     {
       "id": "probe-c",
@@ -27,7 +38,13 @@
       "cmd": "chmod u+x ./star-probe* && ./star-probe-v0.5.0-linux-x86_64 --urls=http://probe-a-star.marathon.mesos:9000/status,http://probe-b-star.marathon.mesos:9000/status,http://probe-d-star.marathon.mesos:9000/status",
       "cpus": 0.1,
       "mem": 64.0,
-      "network": {}
+      "ipAddress": {
+        "discovery": {
+          "ports": [
+            { "name": "status", "number": 9000, "protocol": "tcp" }
+          ]
+        }
+      }
     },
     {
       "id": "probe-d",
@@ -35,7 +52,13 @@
       "cmd": "chmod u+x ./star-probe* && ./star-probe-v0.5.0-linux-x86_64 --urls=http://probe-a-star.marathon.mesos:9000/status,http://probe-b-star.marathon.mesos:9000/status,http://probe-c-star.marathon.mesos:9000/status",
       "cpus": 0.1,
       "mem": 64.0,
-      "network": {}
+      "ipAddress": {
+        "discovery": {
+          "ports": [
+            { "name": "status", "number": 9000, "protocol": "tcp" }
+          ]
+        }
+      }
     },
     {
       "id": "collect",

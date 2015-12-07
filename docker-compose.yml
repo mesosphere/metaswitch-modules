@@ -79,7 +79,7 @@ slave:
    - 192.168.255.254
 
 marathon:
-  image: mesosphere/marathon-test:aa17498a7da2
+  image: mesosphere/marathon-test:c47428883f10
   environment:
     - MARATHON_MASTER=zk://zookeeper:2181/mesos
     - MARATHON_ZK=zk://zookeeper:2181/marathon
