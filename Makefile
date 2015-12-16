@@ -32,7 +32,7 @@ cluster: images
 
 framework: cluster
 	sleep 20
-	docker exec netmodules_mesosmaster_1 python /framework/calico_framework.py
+	docker exec netmodules_mesosmaster_1 python /framework/test_calico_mesos.py
 
 builder-rpm:
 	cd $(WD)/packages && docker build -t mesos-builder .

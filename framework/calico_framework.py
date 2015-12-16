@@ -13,29 +13,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import sys
 import subprocess
-import re
-import time
 import threading
+import time
 import math
 from random import randint
 import mesos.interface
 from mesos.interface import mesos_pb2
 import mesos.native
+import sys
 from calico_utils import _setup_logging
 from tasks import (TaskUpdateError,
                    SleepTask,
-                   PingTask,
-                   NetcatListenTask,
-                   NetcatSendTask)
+                   PingTask)
 from constants import LOGFILE, TASK_CPUS, TASK_MEM, \
     BAD_TASK_STATES, TEST_TIMEOUT
 
 _log = _setup_logging(LOGFILE)
 NEXT_AVAILABLE_TASK_ID = 0
 
+# Global driver set during Framework initialization by start() and used
+# throughout to start and stop the framework, and handle offer actions and
+# other control needs.
+driver = None
 
 class TestState(object):
     Unstarted, Running, Complete = range(0,3)
@@ -406,7 +406,7 @@ class TestScheduler(mesos.interface.Scheduler):
 
                     test.launch(reserved_offers_by_slave_id)
 
-    def report_results_and_exit(self, error=None):
+    def stop_driver_and_report_results(self, error=None):
         if error:
             _log.error("KILLING FRAMEWORK: %s", error)
         driver.stop()
@@ -503,7 +503,23 @@ class TestScheduler(mesos.interface.Scheduler):
                 del(self.unreserved_offers_by_slave_id[slave_id])
                 break
 
-    def run_healthchecks(self):
+    def kill_timed_out_tests(self):
+        """
+        Checks test health, and removes tests from the queue (kill) if
+        they appear unhealthy. Also check if all tests are complete, and quit if they are.
+         Tests are unhealthy on two conditions:
+
+        1. A Started test is unhealthy if it has been greater than TEST_TIMEOUT
+        seconds since any of its tasks last reported a status. This usually is
+        triggered by tasks stuck in TASK_STAGING.
+
+        2. An Unstarted test is unhealthy if no other tests have been running for TEST_TIMEOUT
+        seconds and this test still refuses to start. This is condition is usually met
+        when the mesos cluster does not have enough resources available or does not meet
+        the minimum host conditions required by the test.
+
+        :return:
+        """
         a_test_is_running = False
         for test in self.tests:
             if test.state is TestState.Running:
@@ -532,13 +548,6 @@ class TestScheduler(mesos.interface.Scheduler):
                         self.kill_test(test, "Timed out waiting for task "
                                              "status update")
 
-        for test in self.tests:
-            if test.state != TestState.Complete:
-                break
-        else:
-            self.report_results_and_exit()
-            running = False
-
 
 def get_host_ip():
     ip = subprocess.Popen('ip route get 8.8.8.8 | head -1 | cut -d\' \' -f8',
@@ -550,151 +559,54 @@ class NotEnoughResources(Exception):
     pass
 
 
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        master_ip = get_host_ip() + ":5050"
-        print "Assuming local IP for master: %s" % master_ip
-    else:
-        master_ip = sys.argv[1]
+def start(tests):
+    """
+    Initializes framework by loading supplied tests into the scheduler and
+    starting the driver.
+    :param tests: Collection of TestCases.
+    :return: Will sys.exit with relevant return code.
+    """
+    master_ip = get_host_ip() + ":5050"
 
     framework = mesos_pb2.FrameworkInfo()
     framework.user = ""  # Have Mesos fill in the current user.
     framework.name = "Test Framework (Python)"
-
-    if os.getenv("MESOS_CHECKPOINT"):
-        _log.info("Enabling checkpoint for the framework")
-        framework.checkpoint = True
-
-    implicitAcknowledgements = 1
-    if os.getenv("MESOS_EXPLICIT_ACKNOWLEDGEMENTS"):
-        _log.info("Enabling explicit status update acknowledgements")
-        implicitAcknowledgements = 0
-
     framework.principal = "test-framework-python"
 
-    scheduler = TestScheduler(implicitAcknowledgements)
-
-    test_name = "Same-Host Same-Netgroups Can Ping"
-    sleep_task = SleepTask(netgroups=['netgroup_a'], slave=0)
-    ping_task = PingTask(netgroups=['netgroup_a'], slave=0,
-                         can_ping_targets=[sleep_task])
-    scheduler.tests.append(TestCase([sleep_task, ping_task], name=test_name))
-
-    test_name = "Same-Host Different-Netgroups Can't Ping"
-    sleep_task = SleepTask(netgroups=['netgroup_a'], slave=0)
-    ping_task = PingTask(netgroups=['netgroup_b'], slave=0,
-                         cant_ping_targets=[sleep_task])
-    scheduler.tests.append(TestCase([sleep_task, ping_task], name=test_name))
-
-    test_name = "Different-Host Same-Netgroups Can Ping"
-    sleep_task = SleepTask(netgroups=['netgroup_a'], slave=0)
-    ping_task = PingTask(netgroups=['netgroup_a'], slave=1,
-                         can_ping_targets=[sleep_task])
-    scheduler.tests.append(TestCase([sleep_task, ping_task], name=test_name))
-
-    test_name = "Different-Host Same-Netgroups Can Ping (Default Executor)"
-    sleep_task = SleepTask(netgroups=['netgroup_a'], slave=0,
-                           default_executor=True)
-    ping_task = PingTask(netgroups=['netgroup_a'], slave=1,
-                         default_executor=True,
-                         can_ping_targets=[sleep_task])
-    scheduler.tests.append(TestCase([sleep_task, ping_task], name=test_name))
-
-    test_name = "Tasks that Opt-out of Calico can Communicate"
-    sleep_task = NetcatListenTask()
-    cat_task = NetcatSendTask(can_cat_targets=[sleep_task])
-    scheduler.tests.append(TestCase([sleep_task, cat_task], name=test_name))
-
-    test_name = "Tasks that Opt-out of Calico can Communicate (Default Executor)"
-    sleep_task = NetcatListenTask(default_executor=True)
-    cat_task = NetcatSendTask(can_cat_targets=[sleep_task], default_executor=True)
-    scheduler.tests.append(TestCase([sleep_task, cat_task], name=test_name))
-
-    test_name = "Multiple Netgroup Task Can Ping Each"
-    sleep_task_1 = SleepTask(netgroups=['netgroup_a'])
-    sleep_task_2 = SleepTask(netgroups=['netgroup_b'])
-    ping_task = PingTask(netgroups=['netgroup_a', 'netgroup_b'],
-                         can_ping_targets=[sleep_task_1, sleep_task_2])
-    test = TestCase([sleep_task_1, sleep_task_2, ping_task], name=test_name)
-    scheduler.tests.append(test)
-
-    test_name = "Netgroup Mesh"
-    sleep_task_a_b = SleepTask(netgroups=['netgroup_a', 'netgroup_b'])
-    sleep_task_b = SleepTask(netgroups=['netgroup_b'])
-    sleep_task_a = SleepTask(netgroups=['netgroup_a'])
-    ping_task_a_b = PingTask(netgroups=['netgroup_a', 'netgroup_b'],
-                             can_ping_targets=[sleep_task_a, sleep_task_b,
-                                               sleep_task_a_b])
-    ping_task_a = PingTask(netgroups=['netgroup_a'],
-                           can_ping_targets=[sleep_task_a, sleep_task_a_b],
-                           cant_ping_targets=[sleep_task_b])
-    ping_task_b = PingTask(netgroups=['netgroup_b'],
-                           can_ping_targets=[sleep_task_b, sleep_task_a_b],
-                           cant_ping_targets=[sleep_task_a])
-    test = TestCase([sleep_task_a,
-                     sleep_task_b,
-                     sleep_task_a_b,
-                     ping_task_a,
-                     ping_task_b,
-                     ping_task_a_b],
-                    name=test_name)
-    scheduler.tests.append(test)
-
-    test_name = "Multiple IPs Can Ping"
-    sleep_task = SleepTask(netgroups=['A'], auto_ipv4=2)
-    ping_task = PingTask(netgroups=['A', 'D'],
-                         can_ping_targets=[sleep_task],
-                         auto_ipv4=3)
-    test = TestCase([sleep_task, ping_task], name=test_name)
-    scheduler.tests.append(test)
-
-    test_name = "Static IPs"
-    sleep_task = SleepTask(requested_ips=["192.168.28.23"],
-                           netgroups=['A'],
-                           auto_ipv4=2)
-    ping_task = PingTask(requested_ips=["192.168.28.34"],
-                         netgroups=['A', 'D'],
-                         can_ping_targets=[sleep_task])
-    test = TestCase([sleep_task, ping_task], name=test_name)
-    scheduler.tests.append(test)
-
-    test_name = "Mix static and assigned IPs"
-    sleep_task = SleepTask(requested_ips=["192.168.27.23",
-                                          "192.168.27.34"],
-                           netgroups=['A'],
-                           auto_ipv4=2)
-    ping_task = PingTask(netgroups=['A', 'D'],
-                         can_ping_targets=[sleep_task])
-    test = TestCase([sleep_task, ping_task], name=test_name)
-    scheduler.tests.append(test)
-
-    # Same IPs fail
-    # TODO: fail test individually on isolator error
-    # sleep_task_a = SleepTask(ip="192.168.254.1")
-    # sleep_task_b = SleepTask(ip="192.168.254.1")
-    # test_e = TestCase([sleep_task_a, sleep_task_b], "Test Same IP Fails")
-    # scheduler.tests.append(test_e)
-
+    scheduler = TestScheduler(0)
+    scheduler.tests = tests
     _log.info("Launching")
+
+    global driver
     driver = mesos.native.MesosSchedulerDriver(scheduler,
                                                framework,
                                                master_ip,
-                                               implicitAcknowledgements)
+                                               0)
 
     driver.start()
-    running = True
 
     def healthchecks():
-        while running:
-            _log.debug("Running healthcheck")
-            scheduler.run_healthchecks()
-            time.sleep(5)
+        while True:
+            scheduler.kill_timed_out_tests()
 
+            # Check if all tests are now complete
+            for test in scheduler.tests:
+                if test.state != TestState.Complete:
+                    # At least one test is incomplete.
+                    time.sleep(5)
+                    break
+            else:
+                _log.info("All tests complete.")
+                scheduler.stop_driver_and_report_results()
+                return
+
+    # Start the healthcheck thread, then wait for the driver to finish
+    # (or for healthchecks to kill it)
     thread = threading.Thread(target=healthchecks)
     thread.start()
     driver.join()
-    running = False
     thread.join()
+
     if [task for task in scheduler.all_tasks() if
         task.state in BAD_TASK_STATES] == []:
         sys.exit(0)
