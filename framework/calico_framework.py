@@ -29,13 +29,17 @@ from tasks import (TaskUpdateError,
 from constants import LOGFILE, TASK_CPUS, TASK_MEM, \
     BAD_TASK_STATES, TEST_TIMEOUT
 
+from fnmatch import fnmatch
+import os
+from unittest.loader import VALID_MODULE_NAME
+
 _log = _setup_logging(LOGFILE)
 NEXT_AVAILABLE_TASK_ID = 0
 
 # Global driver set during Framework initialization by start() and used
 # throughout to start and stop the framework, and handle offer actions and
 # other control needs.
-driver = None
+
 
 class TestState(object):
     Unstarted, Running, Complete = range(0,3)
@@ -559,13 +563,55 @@ class NotEnoughResources(Exception):
     pass
 
 
-def start(tests):
+def _get_name_from_path(path):
+    path = os.path.splitext(os.path.normpath(path))[0]
+
+    _relpath = os.path.relpath(path)
+    assert not os.path.isabs(_relpath), "Path must be within the project"
+    assert not _relpath.startswith('..'), "Path must be within the project"
+
+    name = _relpath.replace(os.path.sep, '.')
+    return name
+
+def find_tests():
+    start_dir = "/framework/tests"
+    pattern  = "test_*.py"
+    paths = os.listdir(start_dir)
+
+    tests = []
+    for path in paths:
+        full_path = os.path.join(start_dir, path)
+        if os.path.isfile(full_path):
+            if not VALID_MODULE_NAME.match(path):
+                # valid Python identifiers only
+                continue
+            if not fnmatch(path, pattern):
+                continue
+            # if the test file matches, load it
+            name = _get_name_from_path(full_path)
+            try:
+                __import__(name)
+                module = sys.modules[name]
+            except:
+                raise Exception("Couldn't import test: %s" % name)
+            else:
+                for name in dir(module):
+                    obj = getattr(module, name)
+                    if name.startswith("test_") and hasattr(obj, "__call__"):
+                        tests.append(obj())
+    return tests
+
+driver = None
+if __name__ == '__main__':
     """
     Initializes framework by loading supplied tests into the scheduler and
     starting the driver.
     :param tests: Collection of TestCases.
     :return: Will sys.exit with relevant return code.
     """
+    tests = find_tests()
+    print tests
+
     master_ip = get_host_ip() + ":5050"
 
     framework = mesos_pb2.FrameworkInfo()
@@ -575,14 +621,13 @@ def start(tests):
 
     scheduler = TestScheduler(0)
     scheduler.tests = tests
+
     _log.info("Launching")
 
-    global driver
     driver = mesos.native.MesosSchedulerDriver(scheduler,
                                                framework,
                                                master_ip,
                                                0)
-
     driver.start()
 
     def healthchecks():
