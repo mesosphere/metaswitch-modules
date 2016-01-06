@@ -31,7 +31,7 @@ cluster: images
 
 framework: cluster
 	sleep 20
-	docker exec netmodules_mesosmaster_1 python /framework/calico_framework.py
+	docker exec netmodules_mesosmaster_1 bash -c "cd /framework && python calico_framework.py"
 
 rpm: dist/mesos.rpm
 dist/mesos.rpm: $(wildcard packages/*)
