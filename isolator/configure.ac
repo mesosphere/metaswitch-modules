@@ -42,7 +42,7 @@ AC_ARG_WITH([protobuf],
 
 if test -d "$mesos"; then
   MESOS_INCLUDE_PATH="-I${mesos}/include"
-  MESOS_LDFLAGS="-L${mesos}/lib64 -lmesos -lglog"
+  MESOS_LDFLAGS="-L${mesos}/lib -L${mesos}/lib -lmesos -lglog"
   # Use the system default prefix if not specified.
   if test -n "`echo $with_protobuf`"; then
     PROTOC_PATH="${with_protobuf}/bin"
