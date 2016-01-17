@@ -74,7 +74,8 @@ using namespace process;
 using std::string;
 using std::vector;
 
-using mesos::slave::ContainerPrepareInfo;
+using mesos::slave::ContainerConfig;
+using mesos::slave::ContainerLaunchInfo;
 using mesos::slave::Isolator;
 
 static const char* ipamClientKey = "ipam_command";
@@ -202,11 +203,10 @@ NetworkIsolatorProcess::NetworkIsolatorProcess(
 {}
 
 
-process::Future<Option<ContainerPrepareInfo>> NetworkIsolatorProcess::prepare(
+process::Future<Option<ContainerLaunchInfo>> NetworkIsolatorProcess::prepare(
     const ContainerID& containerId,
     const ExecutorInfo& executorInfo,
-    const std::string& directory,
-    const Option<std::string>& user)
+    const ContainerConfig& containerConfig)
 {
   LOG(INFO) << "NetworkIsolator::prepare for container: " << containerId;
 
@@ -334,11 +334,11 @@ process::Future<Option<ContainerPrepareInfo>> NetworkIsolatorProcess::prepare(
     netgroups.push_back(group);
   }
 
-  ContainerPrepareInfo prepareInfo;
-  prepareInfo.set_namespaces(CLONE_NEWNET);
+  ContainerLaunchInfo launchInfo;
+  launchInfo.set_namespaces(CLONE_NEWNET);
 
   Environment::Variable* variable =
-    prepareInfo.mutable_environment()->add_variables();
+    launchInfo.mutable_environment()->add_variables();
   variable->set_name("LIBPROCESS_IP");
   // If more than one IP is available, just use the first.  LIBPROCESS just
   // needs one, it doesn't matter which.
@@ -347,7 +347,7 @@ process::Future<Option<ContainerPrepareInfo>> NetworkIsolatorProcess::prepare(
   (*infos)[containerId] = new Info(allAddresses, netgroups, uid);
   (*executorContainerIds)[executorInfo.executor_id()] = containerId;
 
-  return prepareInfo;
+  return launchInfo;
 }
 
 
