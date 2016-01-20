@@ -168,10 +168,6 @@ AC_CHECK_HEADER([glog/logging.h],
                     [AC_MSG_ERROR([glog is not installed.])])],
                 [AC_MSG_ERROR([cannot find glog header.])])
 
-AC_CHECK_HEADER([picojson.h],
-                [],
-                [AC_MSG_ERROR([picojson is not installed.])])
-
 AC_CHECK_HEADERS([boost/lexical_cast.hpp boost/functional/hash.hpp],
                 [],
                 [AC_MSG_ERROR([boost is not installed.])])
@@ -182,6 +178,13 @@ AC_CHECK_HEADER([google/protobuf/message.h],
                     [],
                     [AC_MSG_ERROR([google protobuf is not installed.])])],
                 [AC_MSG_ERROR([google protobuf is not installed.])])
+
+old_CPPFLAGS=${CPPFLAGS}
+CPPFLAGS="${CPPFLAGS} ${MESOS_CPPFLAGS}"
+AC_CHECK_HEADER([picojson.h],
+                [],
+                [AC_MSG_ERROR([picojson is not installed.])])
+CPPFLAGS=${old_CPPFLAGS}
 
 # Check for protobuf.
 AC_CHECK_TOOL([PROTOCOMPILER_TEST], [protoc], [], [$PROTOC_PATH])
