@@ -205,11 +205,11 @@ NetworkIsolatorProcess::NetworkIsolatorProcess(
 
 process::Future<Option<ContainerLaunchInfo>> NetworkIsolatorProcess::prepare(
     const ContainerID& containerId,
-    const ExecutorInfo& executorInfo,
     const ContainerConfig& containerConfig)
 {
   LOG(INFO) << "NetworkIsolator::prepare for container: " << containerId;
 
+  const ExecutorInfo executorInfo = containerConfig.executorinfo();
   if (!executorInfo.has_container()) {
     LOG(INFO) << "NetworkIsolator::prepare Ignoring request as "
               << "executorInfo.container is missing for container: "
