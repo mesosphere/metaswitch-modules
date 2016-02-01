@@ -88,7 +88,6 @@ public:
 
   process::Future<Option<mesos::slave::ContainerLaunchInfo>> prepare(
       const ContainerID& containerId,
-      const ExecutorInfo& executorInfo,
       const mesos::slave::ContainerConfig& containerConfig);
 
   process::Future<Nothing> isolate(
@@ -142,13 +141,11 @@ public:
 
   virtual process::Future<Option<mesos::slave::ContainerLaunchInfo>> prepare(
       const ContainerID& containerId,
-      const ExecutorInfo& executorInfo,
       const mesos::slave::ContainerConfig& containerConfig)
   {
     return dispatch(process.get(),
                     &NetworkIsolatorProcess::prepare,
                     containerId,
-                    executorInfo,
                     containerConfig);
   }
 
