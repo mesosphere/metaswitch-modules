@@ -54,10 +54,10 @@
 #include <process/io.hpp>
 #include <process/owned.hpp>
 #include <process/process.hpp>
-#include <process/subprocess.hpp>
 
 #include <stout/hashmap.hpp>
 #include <stout/option.hpp>
+#include <stout/os.hpp>
 #include <stout/os/exists.hpp>
 #include <stout/protobuf.hpp>
 #include <stout/stringify.hpp>
@@ -66,6 +66,9 @@
 
 #include "interface.hpp"
 #include "network_isolator.hpp"
+
+// 40KB should suffice for now!
+#define MAX_JSON_OUTPUT_SIZE (10*4096)
 
 using namespace mesos;
 using namespace network_isolator;
@@ -87,43 +90,98 @@ static bool isolatorActivated = false;
 
 static Try<Isolator*> networkIsolator = (Isolator*) NULL;
 
+static Try<pid_t> popen2(const string& path, int *inFd, int *outFd)
+{
+  int inPipe[2];
+  int outPipe[2];
+
+  if (pipe2(inPipe, O_CLOEXEC) < 0) {
+    return Error("Error creating pipe");
+  }
+
+  if (pipe2(outPipe, O_CLOEXEC) < 0) {
+    return Error("Error creating pipe");
+  }
+
+  pid_t childPid = fork();
+
+  if (childPid == -1) {
+    return Error("Error forking child");
+  }
+
+  if (childPid == 0) {
+    while (::dup2(inPipe[0], STDIN_FILENO) == -1 && errno == EINTR);
+    while (::dup2(outPipe[1], STDOUT_FILENO) == -1 && errno == EINTR);
+
+    // Reset CLOEXEC flag for stdin/out fds.
+    ::fcntl(STDIN_FILENO, F_SETFD, 0);
+    ::fcntl(STDOUT_FILENO, F_SETFD, 0);
+
+    vector<string> args = strings::tokenize(path, " ");
+    // The real arguments that will be passed to 'os::execvpe'. We need
+    // to construct them here before doing the clone as it might not be
+    // async signal safe to perform the memory allocation.
+    char** argv = new char*[args.size() + 1];
+    for (size_t i = 0; i < args.size(); i++) {
+      argv[i] = (char*) args[i].c_str();
+    }
+    argv[args.size()] = NULL;
+
+    char** envp = os::raw::environment();
+
+    os::execvpe(argv[0], argv, envp);
+    ::exit(1);
+  } else {
+    os::close(inPipe[0]);
+    os::close(outPipe[1]);
+  }
+
+  *inFd = inPipe[1];
+  *outFd = outPipe[0];
+  return childPid;
+}
+
+static Try<string> runCommand(const string& path, const string& command)
+{
+  int inFd = -1;
+  int outFd = -1;
+
+  Try<pid_t> childPid = popen2(path, &inFd, &outFd);
+  if (childPid.isError()) {
+    return Error("Error creating subprocess" + childPid.error());
+  }
+
+  LOG(INFO) << "Sending command to " + path + ": " << command;
+  os::write(inFd, command);
+  os::close(inFd);
+
+  Result<string> output = os::read(outFd, MAX_JSON_OUTPUT_SIZE);
+  if (output.isError()) {
+    return Error("Error reading from pipe: " + output.error());
+  }
+  os::close(outFd);
+  ::waitpid(childPid.get(), NULL, 0);
+
+  if (output.isNone()) {
+    return Error("Got no response");
+  }
+
+  LOG(INFO) << "Got response from " << path << ": " << output.get();
+
+  return output.get();
+}
+
+
 template <typename InProto, typename OutProto>
 static Try<OutProto> runCommand(const string& path, const InProto& command)
 {
-  vector<string> argv(1);
-  argv[0] = path;
-  Try<process::Subprocess> child = process::subprocess(
-      argv[0],
-      argv,
-      process::Subprocess::PIPE(),
-      process::Subprocess::PIPE(),
-      process::Subprocess::PIPE());
-  CHECK_SOME(child);
-
   string jsonCommand = stringify(JSON::protobuf(command));
 
-  LOG(INFO) << "Sending command to " + path + ": " << jsonCommand;
-  process::io::write(child.get().in().get(), jsonCommand);
-
-  {
-    // Temporary hack until Subprocess supports closing stdin.
-    // We open /dev/null on fd and dup it over to child's stdin, effectively
-    // closing the existing pipe on stdin. We then close the original fd and
-    // continue with our business. Child's stdin/out/err are closed in its
-    // destructor.
-    // TODO(kapil): Replace this block with child.get().closeIn() or
-    // equivalient.
-    Try<int> fd = os::open("/dev/null", O_WRONLY);
-    if (fd.isError()) {
-      return Error("Error opening /dev/null:" + fd.error());
-    }
-    ::dup2(fd.get(), child.get().in().get());
-    os::close(fd.get());
+  Try<string> output_ = runCommand(path, jsonCommand);
+  if (output_.isError()) {
+    return Error(output_.error());
   }
-
-  waitpid(child.get().pid(), NULL, 0);
-  string output = process::io::read(child.get().out().get()).get();
-  LOG(INFO) << "Got response from " << path << ": " << output;
+  string output = output_.get();
 
   Try<JSON::Object> jsonOutput_ = JSON::parse<JSON::Object>(output);
   if (jsonOutput_.isError()) {
