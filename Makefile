@@ -1,5 +1,5 @@
 .PHONY: framework
-CALICO_NODE_VERSION=v0.8.0
+CALICO_NODE_VERSION=v0.16.1
 DOCKER_COMPOSE_URL=https://github.com/docker/compose/releases/download/1.4.0/docker-compose-`uname -s`-`uname -m`
 
 default: images
