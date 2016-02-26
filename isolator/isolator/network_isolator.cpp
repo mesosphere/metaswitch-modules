@@ -359,7 +359,7 @@ process::Future<Option<ContainerPrepareInfo>> NetworkIsolatorProcess::prepare(
     LOG(INFO) << "IP(s) " << addresses << "reserved with IPAM";
   }
 
-  reserveArgs->mutable_labels()->CopyFrom(networkInfo.labels());
+  reserveArgs->mutable_labels()->CopyFrom(networkInfo.labels().labels());
 
   // Request for IPs the user has asked to auto-assign.
   if (numIPv4) {
@@ -370,7 +370,7 @@ process::Future<Option<ContainerPrepareInfo>> NetworkIsolatorProcess::prepare(
     requestArgs->set_uid(uid);
 
     requestArgs->mutable_netgroups()->CopyFrom(networkInfo.groups());
-    requestArgs->mutable_labels()->CopyFrom(networkInfo.labels());
+    requestArgs->mutable_labels()->CopyFrom(networkInfo.labels().labels());
 
     LOG(INFO) << "Sending IP request command to IPAM";
     Try<IPAMResponse> response =
@@ -437,7 +437,7 @@ process::Future<Nothing> NetworkIsolatorProcess::isolate(
   foreach (const string& netgroup, info->netgroups) {
     isolatorArgs->add_netgroups(netgroup);
   }
-  isolatorArgs->mutable_labels()->CopyFrom(info->labels);
+  isolatorArgs->mutable_labels()->CopyFrom(info->labels.labels());
 
   LOG(INFO) << "Sending isolate command to Isolator";
   Try<IsolatorResponse> response =

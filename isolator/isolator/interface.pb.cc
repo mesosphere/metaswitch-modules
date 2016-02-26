@@ -404,42 +404,42 @@ void protobuf_AddDesc_interface_2eproto() {
   ::mesos::protobuf_AddDesc_mesos_2fmesos_2eproto();
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
     "\n\017interface.proto\022\020network_isolator\032\021mes"
-    "os/mesos.proto\"\360\001\n\024IPAMRequestIPMessage\022"
+    "os/mesos.proto\"\357\001\n\024IPAMRequestIPMessage\022"
     "\031\n\007command\030\001 \002(\t:\010allocate\0229\n\004args\030\002 \002(\013"
     "2+.network_isolator.IPAMRequestIPMessage"
-    ".Args\032\201\001\n\004Args\022\020\n\010hostname\030\001 \002(\t\022\023\n\010num_"
+    ".Args\032\200\001\n\004Args\022\020\n\010hostname\030\001 \002(\t\022\023\n\010num_"
     "ipv4\030\002 \002(\005:\0010\022\023\n\010num_ipv6\030\003 \002(\005:\0010\022\013\n\003ui"
-    "d\030\004 \002(\t\022\021\n\tnetgroups\030\005 \003(\t\022\035\n\006labels\030\006 \001"
-    "(\0132\r.mesos.Labels\"\354\001\n\024IPAMReserveIPMessa"
-    "ge\022\030\n\007command\030\001 \002(\t:\007reserve\0229\n\004args\030\002 \002"
-    "(\0132+.network_isolator.IPAMReserveIPMessa"
-    "ge.Args\032\177\n\004Args\022\020\n\010hostname\030\001 \002(\t\022\022\n\nipv"
-    "4_addrs\030\002 \003(\t\022\022\n\nipv6_addrs\030\003 \003(\t\022\013\n\003uid"
-    "\030\004 \002(\t\022\021\n\tnetgroups\030\005 \003(\t\022\035\n\006labels\030\006 \001("
-    "\0132\r.mesos.Labels\"\215\001\n\024IPAMReleaseIPMessag"
-    "e\022\030\n\007command\030\001 \002(\t:\007release\0229\n\004args\030\002 \002("
-    "\0132+.network_isolator.IPAMReleaseIPMessag"
-    "e.Args\032 \n\004Args\022\013\n\003ips\030\001 \003(\t\022\013\n\003uid\030\002 \001(\t"
-    "\"9\n\014IPAMResponse\022\014\n\004ipv4\030\001 \003(\t\022\014\n\004ipv6\030\002"
-    " \003(\t\022\r\n\005error\030\003 \001(\t\"\207\002\n\026IsolatorIsolateM"
-    "essage\022\030\n\007command\030\001 \002(\t:\007isolate\022;\n\004args"
-    "\030\002 \002(\0132-.network_isolator.IsolatorIsolat"
-    "eMessage.Args\032\225\001\n\004Args\022\020\n\010hostname\030\001 \002(\t"
-    "\022\024\n\014container_id\030\002 \002(\t\022\013\n\003pid\030\003 \002(\r\022\022\n\ni"
-    "pv4_addrs\030\004 \003(\t\022\022\n\nipv6_addrs\030\005 \003(\t\022\021\n\tn"
-    "etgroups\030\006 \003(\t\022\035\n\006labels\030\007 \001(\0132\r.mesos.L"
-    "abels\"\237\001\n\026IsolatorCleanupMessage\022\030\n\007comm"
-    "and\030\001 \002(\t:\007cleanup\022;\n\004args\030\002 \002(\0132-.netwo"
-    "rk_isolator.IsolatorCleanupMessage.Args\032"
-    ".\n\004Args\022\020\n\010hostname\030\001 \002(\t\022\024\n\014container_i"
-    "d\030\002 \002(\t\"\371\001\n\017IsolatorMessage\022\030\n\007command\030\001"
-    " \002(\t:\007isolate\0224\n\004args\030\002 \002(\0132&.network_is"
-    "olator.IsolatorMessage.Args\032\225\001\n\004Args\022\020\n\010"
-    "hostname\030\001 \002(\t\022\024\n\014container_id\030\002 \002(\t\022\013\n\003"
-    "pid\030\003 \002(\005\022\022\n\nipv4_addrs\030\004 \003(\t\022\022\n\nipv6_ad"
-    "drs\030\005 \003(\t\022\021\n\tnetgroups\030\006 \003(\t\022\035\n\006labels\030\007"
-    " \001(\0132\r.mesos.Labels\"!\n\020IsolatorResponse\022"
-    "\r\n\005error\030\001 \001(\t", 1454);
+    "d\030\004 \002(\t\022\021\n\tnetgroups\030\005 \003(\t\022\034\n\006labels\030\006 \003"
+    "(\0132\014.mesos.Label\"\353\001\n\024IPAMReserveIPMessag"
+    "e\022\030\n\007command\030\001 \002(\t:\007reserve\0229\n\004args\030\002 \002("
+    "\0132+.network_isolator.IPAMReserveIPMessag"
+    "e.Args\032~\n\004Args\022\020\n\010hostname\030\001 \002(\t\022\022\n\nipv4"
+    "_addrs\030\002 \003(\t\022\022\n\nipv6_addrs\030\003 \003(\t\022\013\n\003uid\030"
+    "\004 \002(\t\022\021\n\tnetgroups\030\005 \003(\t\022\034\n\006labels\030\006 \003(\013"
+    "2\014.mesos.Label\"\215\001\n\024IPAMReleaseIPMessage\022"
+    "\030\n\007command\030\001 \002(\t:\007release\0229\n\004args\030\002 \002(\0132"
+    "+.network_isolator.IPAMReleaseIPMessage."
+    "Args\032 \n\004Args\022\013\n\003ips\030\001 \003(\t\022\013\n\003uid\030\002 \001(\t\"9"
+    "\n\014IPAMResponse\022\014\n\004ipv4\030\001 \003(\t\022\014\n\004ipv6\030\002 \003"
+    "(\t\022\r\n\005error\030\003 \001(\t\"\206\002\n\026IsolatorIsolateMes"
+    "sage\022\030\n\007command\030\001 \002(\t:\007isolate\022;\n\004args\030\002"
+    " \002(\0132-.network_isolator.IsolatorIsolateM"
+    "essage.Args\032\224\001\n\004Args\022\020\n\010hostname\030\001 \002(\t\022\024"
+    "\n\014container_id\030\002 \002(\t\022\013\n\003pid\030\003 \002(\r\022\022\n\nipv"
+    "4_addrs\030\004 \003(\t\022\022\n\nipv6_addrs\030\005 \003(\t\022\021\n\tnet"
+    "groups\030\006 \003(\t\022\034\n\006labels\030\007 \003(\0132\014.mesos.Lab"
+    "el\"\237\001\n\026IsolatorCleanupMessage\022\030\n\007command"
+    "\030\001 \002(\t:\007cleanup\022;\n\004args\030\002 \002(\0132-.network_"
+    "isolator.IsolatorCleanupMessage.Args\032.\n\004"
+    "Args\022\020\n\010hostname\030\001 \002(\t\022\024\n\014container_id\030\002"
+    " \002(\t\"\370\001\n\017IsolatorMessage\022\030\n\007command\030\001 \002("
+    "\t:\007isolate\0224\n\004args\030\002 \002(\0132&.network_isola"
+    "tor.IsolatorMessage.Args\032\224\001\n\004Args\022\020\n\010hos"
+    "tname\030\001 \002(\t\022\024\n\014container_id\030\002 \002(\t\022\013\n\003pid"
+    "\030\003 \002(\005\022\022\n\nipv4_addrs\030\004 \003(\t\022\022\n\nipv6_addrs"
+    "\030\005 \003(\t\022\021\n\tnetgroups\030\006 \003(\t\022\034\n\006labels\030\007 \003("
+    "\0132\014.mesos.Label\"!\n\020IsolatorResponse\022\r\n\005e"
+    "rror\030\001 \001(\t", 1450);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "interface.proto", &protobuf_RegisterTypes);
   IPAMRequestIPMessage::_default_command_ =
@@ -509,7 +509,6 @@ IPAMRequestIPMessage_Args::IPAMRequestIPMessage_Args()
 }
 
 void IPAMRequestIPMessage_Args::InitAsDefaultInstance() {
-  labels_ = const_cast< ::mesos::Labels*>(&::mesos::Labels::default_instance());
 }
 
 IPAMRequestIPMessage_Args::IPAMRequestIPMessage_Args(const IPAMRequestIPMessage_Args& from)
@@ -524,7 +523,6 @@ void IPAMRequestIPMessage_Args::SharedCtor() {
   num_ipv4_ = 0;
   num_ipv6_ = 0;
   uid_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  labels_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -540,7 +538,6 @@ void IPAMRequestIPMessage_Args::SharedDtor() {
     delete uid_;
   }
   if (this != default_instance_) {
-    delete labels_;
   }
 }
 
@@ -579,11 +576,9 @@ void IPAMRequestIPMessage_Args::Clear() {
         uid_->clear();
       }
     }
-    if (has_labels()) {
-      if (labels_ != NULL) labels_->::mesos::Labels::Clear();
-    }
   }
   netgroups_.Clear();
+  labels_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
 }
@@ -678,16 +673,17 @@ bool IPAMRequestIPMessage_Args::MergePartialFromCodedStream(
         break;
       }
 
-      // optional .mesos.Labels labels = 6;
+      // repeated .mesos.Label labels = 6;
       case 6: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_labels:
           DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
-               input, mutable_labels()));
+                input, add_labels()));
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(50)) goto parse_labels;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -747,10 +743,10 @@ void IPAMRequestIPMessage_Args::SerializeWithCachedSizes(
       5, this->netgroups(i), output);
   }
 
-  // optional .mesos.Labels labels = 6;
-  if (has_labels()) {
+  // repeated .mesos.Label labels = 6;
+  for (int i = 0; i < this->labels_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      6, this->labels(), output);
+      6, this->labels(i), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -800,11 +796,11 @@ void IPAMRequestIPMessage_Args::SerializeWithCachedSizes(
       WriteStringToArray(5, this->netgroups(i), target);
   }
 
-  // optional .mesos.Labels labels = 6;
-  if (has_labels()) {
+  // repeated .mesos.Label labels = 6;
+  for (int i = 0; i < this->labels_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        6, this->labels(), target);
+        6, this->labels(i), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -846,19 +842,20 @@ int IPAMRequestIPMessage_Args::ByteSize() const {
           this->uid());
     }
 
-    // optional .mesos.Labels labels = 6;
-    if (has_labels()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
-          this->labels());
-    }
-
   }
   // repeated string netgroups = 5;
   total_size += 1 * this->netgroups_size();
   for (int i = 0; i < this->netgroups_size(); i++) {
     total_size += ::google::protobuf::internal::WireFormatLite::StringSize(
       this->netgroups(i));
+  }
+
+  // repeated .mesos.Label labels = 6;
+  total_size += 1 * this->labels_size();
+  for (int i = 0; i < this->labels_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->labels(i));
   }
 
   if (!unknown_fields().empty()) {
@@ -887,6 +884,7 @@ void IPAMRequestIPMessage_Args::MergeFrom(const ::google::protobuf::Message& fro
 void IPAMRequestIPMessage_Args::MergeFrom(const IPAMRequestIPMessage_Args& from) {
   GOOGLE_CHECK_NE(&from, this);
   netgroups_.MergeFrom(from.netgroups_);
+  labels_.MergeFrom(from.labels_);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_hostname()) {
       set_hostname(from.hostname());
@@ -899,9 +897,6 @@ void IPAMRequestIPMessage_Args::MergeFrom(const IPAMRequestIPMessage_Args& from)
     }
     if (from.has_uid()) {
       set_uid(from.uid());
-    }
-    if (from.has_labels()) {
-      mutable_labels()->::mesos::Labels::MergeFrom(from.labels());
     }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
@@ -922,8 +917,8 @@ void IPAMRequestIPMessage_Args::CopyFrom(const IPAMRequestIPMessage_Args& from) 
 bool IPAMRequestIPMessage_Args::IsInitialized() const {
   if ((_has_bits_[0] & 0x0000000f) != 0x0000000f) return false;
 
-  if (has_labels()) {
-    if (!this->labels().IsInitialized()) return false;
+  for (int i = 0; i < labels_size(); i++) {
+    if (!this->labels(i).IsInitialized()) return false;
   }
   return true;
 }
@@ -935,7 +930,7 @@ void IPAMRequestIPMessage_Args::Swap(IPAMRequestIPMessage_Args* other) {
     std::swap(num_ipv6_, other->num_ipv6_);
     std::swap(uid_, other->uid_);
     netgroups_.Swap(&other->netgroups_);
-    std::swap(labels_, other->labels_);
+    labels_.Swap(&other->labels_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -1243,7 +1238,6 @@ IPAMReserveIPMessage_Args::IPAMReserveIPMessage_Args()
 }
 
 void IPAMReserveIPMessage_Args::InitAsDefaultInstance() {
-  labels_ = const_cast< ::mesos::Labels*>(&::mesos::Labels::default_instance());
 }
 
 IPAMReserveIPMessage_Args::IPAMReserveIPMessage_Args(const IPAMReserveIPMessage_Args& from)
@@ -1256,7 +1250,6 @@ void IPAMReserveIPMessage_Args::SharedCtor() {
   _cached_size_ = 0;
   hostname_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   uid_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  labels_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -1272,7 +1265,6 @@ void IPAMReserveIPMessage_Args::SharedDtor() {
     delete uid_;
   }
   if (this != default_instance_) {
-    delete labels_;
   }
 }
 
@@ -1309,13 +1301,11 @@ void IPAMReserveIPMessage_Args::Clear() {
         uid_->clear();
       }
     }
-    if (has_labels()) {
-      if (labels_ != NULL) labels_->::mesos::Labels::Clear();
-    }
   }
   ipv4_addrs_.Clear();
   ipv6_addrs_.Clear();
   netgroups_.Clear();
+  labels_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
 }
@@ -1416,16 +1406,17 @@ bool IPAMReserveIPMessage_Args::MergePartialFromCodedStream(
         break;
       }
 
-      // optional .mesos.Labels labels = 6;
+      // repeated .mesos.Label labels = 6;
       case 6: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_labels:
           DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
-               input, mutable_labels()));
+                input, add_labels()));
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(50)) goto parse_labels;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -1493,10 +1484,10 @@ void IPAMReserveIPMessage_Args::SerializeWithCachedSizes(
       5, this->netgroups(i), output);
   }
 
-  // optional .mesos.Labels labels = 6;
-  if (has_labels()) {
+  // repeated .mesos.Label labels = 6;
+  for (int i = 0; i < this->labels_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      6, this->labels(), output);
+      6, this->labels(i), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -1554,11 +1545,11 @@ void IPAMReserveIPMessage_Args::SerializeWithCachedSizes(
       WriteStringToArray(5, this->netgroups(i), target);
   }
 
-  // optional .mesos.Labels labels = 6;
-  if (has_labels()) {
+  // repeated .mesos.Label labels = 6;
+  for (int i = 0; i < this->labels_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        6, this->labels(), target);
+        6, this->labels(i), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -1586,13 +1577,6 @@ int IPAMReserveIPMessage_Args::ByteSize() const {
           this->uid());
     }
 
-    // optional .mesos.Labels labels = 6;
-    if (has_labels()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
-          this->labels());
-    }
-
   }
   // repeated string ipv4_addrs = 2;
   total_size += 1 * this->ipv4_addrs_size();
@@ -1613,6 +1597,14 @@ int IPAMReserveIPMessage_Args::ByteSize() const {
   for (int i = 0; i < this->netgroups_size(); i++) {
     total_size += ::google::protobuf::internal::WireFormatLite::StringSize(
       this->netgroups(i));
+  }
+
+  // repeated .mesos.Label labels = 6;
+  total_size += 1 * this->labels_size();
+  for (int i = 0; i < this->labels_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->labels(i));
   }
 
   if (!unknown_fields().empty()) {
@@ -1643,15 +1635,13 @@ void IPAMReserveIPMessage_Args::MergeFrom(const IPAMReserveIPMessage_Args& from)
   ipv4_addrs_.MergeFrom(from.ipv4_addrs_);
   ipv6_addrs_.MergeFrom(from.ipv6_addrs_);
   netgroups_.MergeFrom(from.netgroups_);
+  labels_.MergeFrom(from.labels_);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_hostname()) {
       set_hostname(from.hostname());
     }
     if (from.has_uid()) {
       set_uid(from.uid());
-    }
-    if (from.has_labels()) {
-      mutable_labels()->::mesos::Labels::MergeFrom(from.labels());
     }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
@@ -1672,8 +1662,8 @@ void IPAMReserveIPMessage_Args::CopyFrom(const IPAMReserveIPMessage_Args& from) 
 bool IPAMReserveIPMessage_Args::IsInitialized() const {
   if ((_has_bits_[0] & 0x00000009) != 0x00000009) return false;
 
-  if (has_labels()) {
-    if (!this->labels().IsInitialized()) return false;
+  for (int i = 0; i < labels_size(); i++) {
+    if (!this->labels(i).IsInitialized()) return false;
   }
   return true;
 }
@@ -1685,7 +1675,7 @@ void IPAMReserveIPMessage_Args::Swap(IPAMReserveIPMessage_Args* other) {
     ipv6_addrs_.Swap(&other->ipv6_addrs_);
     std::swap(uid_, other->uid_);
     netgroups_.Swap(&other->netgroups_);
-    std::swap(labels_, other->labels_);
+    labels_.Swap(&other->labels_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -2862,7 +2852,6 @@ IsolatorIsolateMessage_Args::IsolatorIsolateMessage_Args()
 }
 
 void IsolatorIsolateMessage_Args::InitAsDefaultInstance() {
-  labels_ = const_cast< ::mesos::Labels*>(&::mesos::Labels::default_instance());
 }
 
 IsolatorIsolateMessage_Args::IsolatorIsolateMessage_Args(const IsolatorIsolateMessage_Args& from)
@@ -2876,7 +2865,6 @@ void IsolatorIsolateMessage_Args::SharedCtor() {
   hostname_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   container_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   pid_ = 0u;
-  labels_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -2892,7 +2880,6 @@ void IsolatorIsolateMessage_Args::SharedDtor() {
     delete container_id_;
   }
   if (this != default_instance_) {
-    delete labels_;
   }
 }
 
@@ -2930,13 +2917,11 @@ void IsolatorIsolateMessage_Args::Clear() {
       }
     }
     pid_ = 0u;
-    if (has_labels()) {
-      if (labels_ != NULL) labels_->::mesos::Labels::Clear();
-    }
   }
   ipv4_addrs_.Clear();
   ipv6_addrs_.Clear();
   netgroups_.Clear();
+  labels_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
 }
@@ -3053,16 +3038,17 @@ bool IsolatorIsolateMessage_Args::MergePartialFromCodedStream(
         break;
       }
 
-      // optional .mesos.Labels labels = 7;
+      // repeated .mesos.Label labels = 7;
       case 7: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_labels:
           DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
-               input, mutable_labels()));
+                input, add_labels()));
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(58)) goto parse_labels;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -3135,10 +3121,10 @@ void IsolatorIsolateMessage_Args::SerializeWithCachedSizes(
       6, this->netgroups(i), output);
   }
 
-  // optional .mesos.Labels labels = 7;
-  if (has_labels()) {
+  // repeated .mesos.Label labels = 7;
+  for (int i = 0; i < this->labels_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      7, this->labels(), output);
+      7, this->labels(i), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -3201,11 +3187,11 @@ void IsolatorIsolateMessage_Args::SerializeWithCachedSizes(
       WriteStringToArray(6, this->netgroups(i), target);
   }
 
-  // optional .mesos.Labels labels = 7;
-  if (has_labels()) {
+  // repeated .mesos.Label labels = 7;
+  for (int i = 0; i < this->labels_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        7, this->labels(), target);
+        7, this->labels(i), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -3240,13 +3226,6 @@ int IsolatorIsolateMessage_Args::ByteSize() const {
           this->pid());
     }
 
-    // optional .mesos.Labels labels = 7;
-    if (has_labels()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
-          this->labels());
-    }
-
   }
   // repeated string ipv4_addrs = 4;
   total_size += 1 * this->ipv4_addrs_size();
@@ -3267,6 +3246,14 @@ int IsolatorIsolateMessage_Args::ByteSize() const {
   for (int i = 0; i < this->netgroups_size(); i++) {
     total_size += ::google::protobuf::internal::WireFormatLite::StringSize(
       this->netgroups(i));
+  }
+
+  // repeated .mesos.Label labels = 7;
+  total_size += 1 * this->labels_size();
+  for (int i = 0; i < this->labels_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->labels(i));
   }
 
   if (!unknown_fields().empty()) {
@@ -3297,6 +3284,7 @@ void IsolatorIsolateMessage_Args::MergeFrom(const IsolatorIsolateMessage_Args& f
   ipv4_addrs_.MergeFrom(from.ipv4_addrs_);
   ipv6_addrs_.MergeFrom(from.ipv6_addrs_);
   netgroups_.MergeFrom(from.netgroups_);
+  labels_.MergeFrom(from.labels_);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_hostname()) {
       set_hostname(from.hostname());
@@ -3306,9 +3294,6 @@ void IsolatorIsolateMessage_Args::MergeFrom(const IsolatorIsolateMessage_Args& f
     }
     if (from.has_pid()) {
       set_pid(from.pid());
-    }
-    if (from.has_labels()) {
-      mutable_labels()->::mesos::Labels::MergeFrom(from.labels());
     }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
@@ -3329,8 +3314,8 @@ void IsolatorIsolateMessage_Args::CopyFrom(const IsolatorIsolateMessage_Args& fr
 bool IsolatorIsolateMessage_Args::IsInitialized() const {
   if ((_has_bits_[0] & 0x00000007) != 0x00000007) return false;
 
-  if (has_labels()) {
-    if (!this->labels().IsInitialized()) return false;
+  for (int i = 0; i < labels_size(); i++) {
+    if (!this->labels(i).IsInitialized()) return false;
   }
   return true;
 }
@@ -3343,7 +3328,7 @@ void IsolatorIsolateMessage_Args::Swap(IsolatorIsolateMessage_Args* other) {
     ipv4_addrs_.Swap(&other->ipv4_addrs_);
     ipv6_addrs_.Swap(&other->ipv6_addrs_);
     netgroups_.Swap(&other->netgroups_);
-    std::swap(labels_, other->labels_);
+    labels_.Swap(&other->labels_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -4210,7 +4195,6 @@ IsolatorMessage_Args::IsolatorMessage_Args()
 }
 
 void IsolatorMessage_Args::InitAsDefaultInstance() {
-  labels_ = const_cast< ::mesos::Labels*>(&::mesos::Labels::default_instance());
 }
 
 IsolatorMessage_Args::IsolatorMessage_Args(const IsolatorMessage_Args& from)
@@ -4224,7 +4208,6 @@ void IsolatorMessage_Args::SharedCtor() {
   hostname_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   container_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   pid_ = 0;
-  labels_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -4240,7 +4223,6 @@ void IsolatorMessage_Args::SharedDtor() {
     delete container_id_;
   }
   if (this != default_instance_) {
-    delete labels_;
   }
 }
 
@@ -4278,13 +4260,11 @@ void IsolatorMessage_Args::Clear() {
       }
     }
     pid_ = 0;
-    if (has_labels()) {
-      if (labels_ != NULL) labels_->::mesos::Labels::Clear();
-    }
   }
   ipv4_addrs_.Clear();
   ipv6_addrs_.Clear();
   netgroups_.Clear();
+  labels_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
 }
@@ -4401,16 +4381,17 @@ bool IsolatorMessage_Args::MergePartialFromCodedStream(
         break;
       }
 
-      // optional .mesos.Labels labels = 7;
+      // repeated .mesos.Label labels = 7;
       case 7: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_labels:
           DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
-               input, mutable_labels()));
+                input, add_labels()));
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(58)) goto parse_labels;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -4483,10 +4464,10 @@ void IsolatorMessage_Args::SerializeWithCachedSizes(
       6, this->netgroups(i), output);
   }
 
-  // optional .mesos.Labels labels = 7;
-  if (has_labels()) {
+  // repeated .mesos.Label labels = 7;
+  for (int i = 0; i < this->labels_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      7, this->labels(), output);
+      7, this->labels(i), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -4549,11 +4530,11 @@ void IsolatorMessage_Args::SerializeWithCachedSizes(
       WriteStringToArray(6, this->netgroups(i), target);
   }
 
-  // optional .mesos.Labels labels = 7;
-  if (has_labels()) {
+  // repeated .mesos.Label labels = 7;
+  for (int i = 0; i < this->labels_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        7, this->labels(), target);
+        7, this->labels(i), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -4588,13 +4569,6 @@ int IsolatorMessage_Args::ByteSize() const {
           this->pid());
     }
 
-    // optional .mesos.Labels labels = 7;
-    if (has_labels()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
-          this->labels());
-    }
-
   }
   // repeated string ipv4_addrs = 4;
   total_size += 1 * this->ipv4_addrs_size();
@@ -4615,6 +4589,14 @@ int IsolatorMessage_Args::ByteSize() const {
   for (int i = 0; i < this->netgroups_size(); i++) {
     total_size += ::google::protobuf::internal::WireFormatLite::StringSize(
       this->netgroups(i));
+  }
+
+  // repeated .mesos.Label labels = 7;
+  total_size += 1 * this->labels_size();
+  for (int i = 0; i < this->labels_size(); i++) {
+    total_size +=
+      ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+        this->labels(i));
   }
 
   if (!unknown_fields().empty()) {
@@ -4645,6 +4627,7 @@ void IsolatorMessage_Args::MergeFrom(const IsolatorMessage_Args& from) {
   ipv4_addrs_.MergeFrom(from.ipv4_addrs_);
   ipv6_addrs_.MergeFrom(from.ipv6_addrs_);
   netgroups_.MergeFrom(from.netgroups_);
+  labels_.MergeFrom(from.labels_);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_hostname()) {
       set_hostname(from.hostname());
@@ -4654,9 +4637,6 @@ void IsolatorMessage_Args::MergeFrom(const IsolatorMessage_Args& from) {
     }
     if (from.has_pid()) {
       set_pid(from.pid());
-    }
-    if (from.has_labels()) {
-      mutable_labels()->::mesos::Labels::MergeFrom(from.labels());
     }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
@@ -4677,8 +4657,8 @@ void IsolatorMessage_Args::CopyFrom(const IsolatorMessage_Args& from) {
 bool IsolatorMessage_Args::IsInitialized() const {
   if ((_has_bits_[0] & 0x00000007) != 0x00000007) return false;
 
-  if (has_labels()) {
-    if (!this->labels().IsInitialized()) return false;
+  for (int i = 0; i < labels_size(); i++) {
+    if (!this->labels(i).IsInitialized()) return false;
   }
   return true;
 }
@@ -4691,7 +4671,7 @@ void IsolatorMessage_Args::Swap(IsolatorMessage_Args* other) {
     ipv4_addrs_.Swap(&other->ipv4_addrs_);
     ipv6_addrs_.Swap(&other->ipv6_addrs_);
     netgroups_.Swap(&other->netgroups_);
-    std::swap(labels_, other->labels_);
+    labels_.Swap(&other->labels_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
