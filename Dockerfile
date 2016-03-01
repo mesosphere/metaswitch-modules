@@ -12,6 +12,5 @@ ADD ./isolator/ /isolator/
 RUN ./bootstrap && \
     mkdir build && \
     cd build && \
-    export LD_LIBRARY_PATH=LD_LIBRARY_PATH:/usr/local/lib && \
     ../configure --with-mesos=/usr/local --with-protobuf=/usr && \
-    make all
+    make all && make install

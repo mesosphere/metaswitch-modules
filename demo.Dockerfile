@@ -38,13 +38,6 @@ COPY ./demo/marathon/star-resources-before.json /star/star-resources-before.json
 COPY ./demo/marathon/star-resources.json /star/star-resources.json
 COPY ./demo/marathon/star-iso-resources.json /star/star-iso-resources.json
 
-##################
-# Sample Flask App
-#################
-RUN apt-get install -y python-pip libffi-dev
-RUN pip install flask
-COPY ./test/sampleflaskapp.tgz /mesos/sampleflaskapp.tgz
-
 #################
 # Init scripts
 #################
@@ -75,9 +68,8 @@ RUN ./bootstrap && \
 # Calico
 ######################
 COPY ./calico/ /calico/
-RUN wget https://github.com/projectcalico/calico-docker/releases/download/v0.8.0/calicoctl && \
-    chmod +x calicoctl && \
-    mv calicoctl /usr/local/bin/
-RUN wget https://github.com/projectcalico/calico-mesos/releases/download/v0.1.1/calico_mesos && \
-    chmod +x calico_mesos && \
-    mv calico_mesos /calico/
+ADD https://github.com/projectcalico/calico-docker/releases/download/v0.16.1/calicoctl /usr/local/bin/calicoctl 
+RUN chmod +x /usr/local/bin/calicoctl
+
+ADD https://github.com/projectcalico/calico-mesos/releases/download/v0.1.5/calico_mesos /calico/calico_mesos
+RUN chmod +x /calico/calico_mesos

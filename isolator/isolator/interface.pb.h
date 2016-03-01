@@ -159,14 +159,17 @@ class IPAMRequestIPMessage_Args : public ::google::protobuf::Message {
   inline const ::google::protobuf::RepeatedPtrField< ::std::string>& netgroups() const;
   inline ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_netgroups();
 
-  // optional .mesos.Labels labels = 6;
-  inline bool has_labels() const;
+  // repeated .mesos.Label labels = 6;
+  inline int labels_size() const;
   inline void clear_labels();
   static const int kLabelsFieldNumber = 6;
-  inline const ::mesos::Labels& labels() const;
-  inline ::mesos::Labels* mutable_labels();
-  inline ::mesos::Labels* release_labels();
-  inline void set_allocated_labels(::mesos::Labels* labels);
+  inline const ::mesos::Label& labels(int index) const;
+  inline ::mesos::Label* mutable_labels(int index);
+  inline ::mesos::Label* add_labels();
+  inline const ::google::protobuf::RepeatedPtrField< ::mesos::Label >&
+      labels() const;
+  inline ::google::protobuf::RepeatedPtrField< ::mesos::Label >*
+      mutable_labels();
 
   // @@protoc_insertion_point(class_scope:network_isolator.IPAMRequestIPMessage.Args)
  private:
@@ -178,8 +181,6 @@ class IPAMRequestIPMessage_Args : public ::google::protobuf::Message {
   inline void clear_has_num_ipv6();
   inline void set_has_uid();
   inline void clear_has_uid();
-  inline void set_has_labels();
-  inline void clear_has_labels();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -188,7 +189,7 @@ class IPAMRequestIPMessage_Args : public ::google::protobuf::Message {
   ::google::protobuf::int32 num_ipv6_;
   ::std::string* uid_;
   ::google::protobuf::RepeatedPtrField< ::std::string> netgroups_;
-  ::mesos::Labels* labels_;
+  ::google::protobuf::RepeatedPtrField< ::mesos::Label > labels_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
@@ -430,14 +431,17 @@ class IPAMReserveIPMessage_Args : public ::google::protobuf::Message {
   inline const ::google::protobuf::RepeatedPtrField< ::std::string>& netgroups() const;
   inline ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_netgroups();
 
-  // optional .mesos.Labels labels = 6;
-  inline bool has_labels() const;
+  // repeated .mesos.Label labels = 6;
+  inline int labels_size() const;
   inline void clear_labels();
   static const int kLabelsFieldNumber = 6;
-  inline const ::mesos::Labels& labels() const;
-  inline ::mesos::Labels* mutable_labels();
-  inline ::mesos::Labels* release_labels();
-  inline void set_allocated_labels(::mesos::Labels* labels);
+  inline const ::mesos::Label& labels(int index) const;
+  inline ::mesos::Label* mutable_labels(int index);
+  inline ::mesos::Label* add_labels();
+  inline const ::google::protobuf::RepeatedPtrField< ::mesos::Label >&
+      labels() const;
+  inline ::google::protobuf::RepeatedPtrField< ::mesos::Label >*
+      mutable_labels();
 
   // @@protoc_insertion_point(class_scope:network_isolator.IPAMReserveIPMessage.Args)
  private:
@@ -445,8 +449,6 @@ class IPAMReserveIPMessage_Args : public ::google::protobuf::Message {
   inline void clear_has_hostname();
   inline void set_has_uid();
   inline void clear_has_uid();
-  inline void set_has_labels();
-  inline void clear_has_labels();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -455,7 +457,7 @@ class IPAMReserveIPMessage_Args : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::std::string> ipv6_addrs_;
   ::std::string* uid_;
   ::google::protobuf::RepeatedPtrField< ::std::string> netgroups_;
-  ::mesos::Labels* labels_;
+  ::google::protobuf::RepeatedPtrField< ::mesos::Label > labels_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
@@ -1031,14 +1033,17 @@ class IsolatorIsolateMessage_Args : public ::google::protobuf::Message {
   inline const ::google::protobuf::RepeatedPtrField< ::std::string>& netgroups() const;
   inline ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_netgroups();
 
-  // optional .mesos.Labels labels = 7;
-  inline bool has_labels() const;
+  // repeated .mesos.Label labels = 7;
+  inline int labels_size() const;
   inline void clear_labels();
   static const int kLabelsFieldNumber = 7;
-  inline const ::mesos::Labels& labels() const;
-  inline ::mesos::Labels* mutable_labels();
-  inline ::mesos::Labels* release_labels();
-  inline void set_allocated_labels(::mesos::Labels* labels);
+  inline const ::mesos::Label& labels(int index) const;
+  inline ::mesos::Label* mutable_labels(int index);
+  inline ::mesos::Label* add_labels();
+  inline const ::google::protobuf::RepeatedPtrField< ::mesos::Label >&
+      labels() const;
+  inline ::google::protobuf::RepeatedPtrField< ::mesos::Label >*
+      mutable_labels();
 
   // @@protoc_insertion_point(class_scope:network_isolator.IsolatorIsolateMessage.Args)
  private:
@@ -1048,8 +1053,6 @@ class IsolatorIsolateMessage_Args : public ::google::protobuf::Message {
   inline void clear_has_container_id();
   inline void set_has_pid();
   inline void clear_has_pid();
-  inline void set_has_labels();
-  inline void clear_has_labels();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -1058,7 +1061,7 @@ class IsolatorIsolateMessage_Args : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::std::string> ipv4_addrs_;
   ::google::protobuf::RepeatedPtrField< ::std::string> ipv6_addrs_;
   ::google::protobuf::RepeatedPtrField< ::std::string> netgroups_;
-  ::mesos::Labels* labels_;
+  ::google::protobuf::RepeatedPtrField< ::mesos::Label > labels_;
   ::google::protobuf::uint32 pid_;
 
   mutable int _cached_size_;
@@ -1512,14 +1515,17 @@ class IsolatorMessage_Args : public ::google::protobuf::Message {
   inline const ::google::protobuf::RepeatedPtrField< ::std::string>& netgroups() const;
   inline ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_netgroups();
 
-  // optional .mesos.Labels labels = 7;
-  inline bool has_labels() const;
+  // repeated .mesos.Label labels = 7;
+  inline int labels_size() const;
   inline void clear_labels();
   static const int kLabelsFieldNumber = 7;
-  inline const ::mesos::Labels& labels() const;
-  inline ::mesos::Labels* mutable_labels();
-  inline ::mesos::Labels* release_labels();
-  inline void set_allocated_labels(::mesos::Labels* labels);
+  inline const ::mesos::Label& labels(int index) const;
+  inline ::mesos::Label* mutable_labels(int index);
+  inline ::mesos::Label* add_labels();
+  inline const ::google::protobuf::RepeatedPtrField< ::mesos::Label >&
+      labels() const;
+  inline ::google::protobuf::RepeatedPtrField< ::mesos::Label >*
+      mutable_labels();
 
   // @@protoc_insertion_point(class_scope:network_isolator.IsolatorMessage.Args)
  private:
@@ -1529,8 +1535,6 @@ class IsolatorMessage_Args : public ::google::protobuf::Message {
   inline void clear_has_container_id();
   inline void set_has_pid();
   inline void clear_has_pid();
-  inline void set_has_labels();
-  inline void clear_has_labels();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -1539,7 +1543,7 @@ class IsolatorMessage_Args : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::std::string> ipv4_addrs_;
   ::google::protobuf::RepeatedPtrField< ::std::string> ipv6_addrs_;
   ::google::protobuf::RepeatedPtrField< ::std::string> netgroups_;
-  ::mesos::Labels* labels_;
+  ::google::protobuf::RepeatedPtrField< ::mesos::Label > labels_;
   ::google::protobuf::int32 pid_;
 
   mutable int _cached_size_;
@@ -1976,42 +1980,29 @@ IPAMRequestIPMessage_Args::mutable_netgroups() {
   return &netgroups_;
 }
 
-// optional .mesos.Labels labels = 6;
-inline bool IPAMRequestIPMessage_Args::has_labels() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
-}
-inline void IPAMRequestIPMessage_Args::set_has_labels() {
-  _has_bits_[0] |= 0x00000020u;
-}
-inline void IPAMRequestIPMessage_Args::clear_has_labels() {
-  _has_bits_[0] &= ~0x00000020u;
+// repeated .mesos.Label labels = 6;
+inline int IPAMRequestIPMessage_Args::labels_size() const {
+  return labels_.size();
 }
 inline void IPAMRequestIPMessage_Args::clear_labels() {
-  if (labels_ != NULL) labels_->::mesos::Labels::Clear();
-  clear_has_labels();
+  labels_.Clear();
 }
-inline const ::mesos::Labels& IPAMRequestIPMessage_Args::labels() const {
-  return labels_ != NULL ? *labels_ : *default_instance_->labels_;
+inline const ::mesos::Label& IPAMRequestIPMessage_Args::labels(int index) const {
+  return labels_.Get(index);
 }
-inline ::mesos::Labels* IPAMRequestIPMessage_Args::mutable_labels() {
-  set_has_labels();
-  if (labels_ == NULL) labels_ = new ::mesos::Labels;
+inline ::mesos::Label* IPAMRequestIPMessage_Args::mutable_labels(int index) {
+  return labels_.Mutable(index);
+}
+inline ::mesos::Label* IPAMRequestIPMessage_Args::add_labels() {
+  return labels_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::mesos::Label >&
+IPAMRequestIPMessage_Args::labels() const {
   return labels_;
 }
-inline ::mesos::Labels* IPAMRequestIPMessage_Args::release_labels() {
-  clear_has_labels();
-  ::mesos::Labels* temp = labels_;
-  labels_ = NULL;
-  return temp;
-}
-inline void IPAMRequestIPMessage_Args::set_allocated_labels(::mesos::Labels* labels) {
-  delete labels_;
-  labels_ = labels;
-  if (labels) {
-    set_has_labels();
-  } else {
-    clear_has_labels();
-  }
+inline ::google::protobuf::RepeatedPtrField< ::mesos::Label >*
+IPAMRequestIPMessage_Args::mutable_labels() {
+  return &labels_;
 }
 
 // -------------------------------------------------------------------
@@ -2402,42 +2393,29 @@ IPAMReserveIPMessage_Args::mutable_netgroups() {
   return &netgroups_;
 }
 
-// optional .mesos.Labels labels = 6;
-inline bool IPAMReserveIPMessage_Args::has_labels() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
-}
-inline void IPAMReserveIPMessage_Args::set_has_labels() {
-  _has_bits_[0] |= 0x00000020u;
-}
-inline void IPAMReserveIPMessage_Args::clear_has_labels() {
-  _has_bits_[0] &= ~0x00000020u;
+// repeated .mesos.Label labels = 6;
+inline int IPAMReserveIPMessage_Args::labels_size() const {
+  return labels_.size();
 }
 inline void IPAMReserveIPMessage_Args::clear_labels() {
-  if (labels_ != NULL) labels_->::mesos::Labels::Clear();
-  clear_has_labels();
+  labels_.Clear();
 }
-inline const ::mesos::Labels& IPAMReserveIPMessage_Args::labels() const {
-  return labels_ != NULL ? *labels_ : *default_instance_->labels_;
+inline const ::mesos::Label& IPAMReserveIPMessage_Args::labels(int index) const {
+  return labels_.Get(index);
 }
-inline ::mesos::Labels* IPAMReserveIPMessage_Args::mutable_labels() {
-  set_has_labels();
-  if (labels_ == NULL) labels_ = new ::mesos::Labels;
+inline ::mesos::Label* IPAMReserveIPMessage_Args::mutable_labels(int index) {
+  return labels_.Mutable(index);
+}
+inline ::mesos::Label* IPAMReserveIPMessage_Args::add_labels() {
+  return labels_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::mesos::Label >&
+IPAMReserveIPMessage_Args::labels() const {
   return labels_;
 }
-inline ::mesos::Labels* IPAMReserveIPMessage_Args::release_labels() {
-  clear_has_labels();
-  ::mesos::Labels* temp = labels_;
-  labels_ = NULL;
-  return temp;
-}
-inline void IPAMReserveIPMessage_Args::set_allocated_labels(::mesos::Labels* labels) {
-  delete labels_;
-  labels_ = labels;
-  if (labels) {
-    set_has_labels();
-  } else {
-    clear_has_labels();
-  }
+inline ::google::protobuf::RepeatedPtrField< ::mesos::Label >*
+IPAMReserveIPMessage_Args::mutable_labels() {
+  return &labels_;
 }
 
 // -------------------------------------------------------------------
@@ -3242,42 +3220,29 @@ IsolatorIsolateMessage_Args::mutable_netgroups() {
   return &netgroups_;
 }
 
-// optional .mesos.Labels labels = 7;
-inline bool IsolatorIsolateMessage_Args::has_labels() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
-}
-inline void IsolatorIsolateMessage_Args::set_has_labels() {
-  _has_bits_[0] |= 0x00000040u;
-}
-inline void IsolatorIsolateMessage_Args::clear_has_labels() {
-  _has_bits_[0] &= ~0x00000040u;
+// repeated .mesos.Label labels = 7;
+inline int IsolatorIsolateMessage_Args::labels_size() const {
+  return labels_.size();
 }
 inline void IsolatorIsolateMessage_Args::clear_labels() {
-  if (labels_ != NULL) labels_->::mesos::Labels::Clear();
-  clear_has_labels();
+  labels_.Clear();
 }
-inline const ::mesos::Labels& IsolatorIsolateMessage_Args::labels() const {
-  return labels_ != NULL ? *labels_ : *default_instance_->labels_;
+inline const ::mesos::Label& IsolatorIsolateMessage_Args::labels(int index) const {
+  return labels_.Get(index);
 }
-inline ::mesos::Labels* IsolatorIsolateMessage_Args::mutable_labels() {
-  set_has_labels();
-  if (labels_ == NULL) labels_ = new ::mesos::Labels;
+inline ::mesos::Label* IsolatorIsolateMessage_Args::mutable_labels(int index) {
+  return labels_.Mutable(index);
+}
+inline ::mesos::Label* IsolatorIsolateMessage_Args::add_labels() {
+  return labels_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::mesos::Label >&
+IsolatorIsolateMessage_Args::labels() const {
   return labels_;
 }
-inline ::mesos::Labels* IsolatorIsolateMessage_Args::release_labels() {
-  clear_has_labels();
-  ::mesos::Labels* temp = labels_;
-  labels_ = NULL;
-  return temp;
-}
-inline void IsolatorIsolateMessage_Args::set_allocated_labels(::mesos::Labels* labels) {
-  delete labels_;
-  labels_ = labels;
-  if (labels) {
-    set_has_labels();
-  } else {
-    clear_has_labels();
-  }
+inline ::google::protobuf::RepeatedPtrField< ::mesos::Label >*
+IsolatorIsolateMessage_Args::mutable_labels() {
+  return &labels_;
 }
 
 // -------------------------------------------------------------------
@@ -3946,42 +3911,29 @@ IsolatorMessage_Args::mutable_netgroups() {
   return &netgroups_;
 }
 
-// optional .mesos.Labels labels = 7;
-inline bool IsolatorMessage_Args::has_labels() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
-}
-inline void IsolatorMessage_Args::set_has_labels() {
-  _has_bits_[0] |= 0x00000040u;
-}
-inline void IsolatorMessage_Args::clear_has_labels() {
-  _has_bits_[0] &= ~0x00000040u;
+// repeated .mesos.Label labels = 7;
+inline int IsolatorMessage_Args::labels_size() const {
+  return labels_.size();
 }
 inline void IsolatorMessage_Args::clear_labels() {
-  if (labels_ != NULL) labels_->::mesos::Labels::Clear();
-  clear_has_labels();
+  labels_.Clear();
 }
-inline const ::mesos::Labels& IsolatorMessage_Args::labels() const {
-  return labels_ != NULL ? *labels_ : *default_instance_->labels_;
+inline const ::mesos::Label& IsolatorMessage_Args::labels(int index) const {
+  return labels_.Get(index);
 }
-inline ::mesos::Labels* IsolatorMessage_Args::mutable_labels() {
-  set_has_labels();
-  if (labels_ == NULL) labels_ = new ::mesos::Labels;
+inline ::mesos::Label* IsolatorMessage_Args::mutable_labels(int index) {
+  return labels_.Mutable(index);
+}
+inline ::mesos::Label* IsolatorMessage_Args::add_labels() {
+  return labels_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::mesos::Label >&
+IsolatorMessage_Args::labels() const {
   return labels_;
 }
-inline ::mesos::Labels* IsolatorMessage_Args::release_labels() {
-  clear_has_labels();
-  ::mesos::Labels* temp = labels_;
-  labels_ = NULL;
-  return temp;
-}
-inline void IsolatorMessage_Args::set_allocated_labels(::mesos::Labels* labels) {
-  delete labels_;
-  labels_ = labels;
-  if (labels) {
-    set_has_labels();
-  } else {
-    clear_has_labels();
-  }
+inline ::google::protobuf::RepeatedPtrField< ::mesos::Label >*
+IsolatorMessage_Args::mutable_labels() {
+  return &labels_;
 }
 
 // -------------------------------------------------------------------

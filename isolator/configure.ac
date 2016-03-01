@@ -160,6 +160,9 @@ fi
 # CXXFLAG as appropriate.
 AX_CXX_COMPILE_STDCXX_11([noext], [mandatory])
 
+old_CPPFLAGS=${CPPFLAGS}
+CPPFLAGS="${CPPFLAGS} ${MESOS_CPPFLAGS}"
+
 # Check if headers and library were located.
 AC_CHECK_HEADER([glog/logging.h],
                 [AC_LINK_IFELSE(
@@ -183,8 +186,9 @@ AC_CHECK_HEADER([google/protobuf/message.h],
                     [AC_MSG_ERROR([google protobuf is not installed.])])],
                 [AC_MSG_ERROR([google protobuf is not installed.])])
 
-# Check for protobuf.
 AC_CHECK_TOOL([PROTOCOMPILER_TEST], [protoc], [], [$PROTOC_PATH])
+
+CPPFLAGS=${old_CPPFLAGS}
 
 if test -z "`echo $PROTOCOMPILER_TEST`"; then
   AC_MSG_ERROR([protoc not found in $PROTOC_PATH])

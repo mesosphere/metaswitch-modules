@@ -61,10 +61,13 @@ struct Info
 {
   Info(const std::vector<std::string>& _ipAddresses,
        const std::vector<std::string>& _netgroups,
-       const std::string& _uid)
+       const std::string& _uid,
+       const mesos::Labels _labels)
     : ipAddresses(_ipAddresses),
       netgroups(_netgroups),
-      uid(_uid) {}
+      uid(_uid),
+      labels(_labels) {}
+
 
   // The IP addresses to assign to the container.
   const std::vector<std::string> ipAddresses;
@@ -75,6 +78,8 @@ struct Info
 
   // Unique identifier assigned to each IPAM IP request.
   const std::string uid;
+
+  const mesos::Labels labels;
 };
 
 
