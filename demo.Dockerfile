@@ -38,13 +38,6 @@ COPY ./demo/marathon/star-resources-before.json /star/star-resources-before.json
 COPY ./demo/marathon/star-resources.json /star/star-resources.json
 COPY ./demo/marathon/star-iso-resources.json /star/star-iso-resources.json
 
-##################
-# Sample Flask App
-#################
-RUN apt-get install -y python-pip libffi-dev
-RUN pip install flask
-COPY ./test/sampleflaskapp.tgz /mesos/sampleflaskapp.tgz
-
 #################
 # Init scripts
 #################
