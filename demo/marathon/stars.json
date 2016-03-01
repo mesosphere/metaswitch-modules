@@ -4,27 +4,26 @@
     {
       "id": "probe-a",
       "uris": ["file:///star/star-probe-v0.5.0-linux-x86_64"],
-      "cmd": "chmod u+x ./star-probe* && ./star-probe-v0.5.0-linux-x86_64 --urls=http://probe-b-star.marathon.mesos:9000/status,http://probe-c-star.marathon.mesos:9000/status,http://probe-d-star.marathon.mesos:9000/status",
+      "cmd": "chmod u+x ./star-probe* && ./star-probe-v0.5.0-linux-x86_64 --urls=http://probe-b.star.marathon.mesos:9000/status,http://probe-c.star.marathon.mesos:9000/status,http://probe-d.star.marathon.mesos:9000/status",
       "cpus": 0.1,
       "mem": 64.0,
       "ipAddress": {
+        "groups": ["public"],
         "discovery": {
           "ports": [
             { "name": "status", "number": 9000, "protocol": "tcp" }
           ]
-        },
-        "labels": {
-          "network_isolator.netgroups": "default"
         }
       }
     },
     {
       "id": "probe-b",
       "uris": ["file:///star/star-probe-v0.5.0-linux-x86_64"],
-      "cmd": "chmod u+x ./star-probe* && ./star-probe-v0.5.0-linux-x86_64 --urls=http://probe-a-star.marathon.mesos:9000/status,http://probe-c-star.marathon.mesos:9000/status,http://probe-d-star.marathon.mesos:9000/status",
+      "cmd": "chmod u+x ./star-probe* && ./star-probe-v0.5.0-linux-x86_64 --urls=http://probe-a.star.marathon.mesos:9000/status,http://probe-c.star.marathon.mesos:9000/status,http://probe-d.star.marathon.mesos:9000/status",
       "cpus": 0.1,
       "mem": 64.0,
       "ipAddress": {
+        "groups": ["public"],
         "discovery": {
           "ports": [
             { "name": "status", "number": 9000, "protocol": "tcp" }
@@ -35,10 +34,11 @@
     {
       "id": "probe-c",
       "uris": ["file:///star/star-probe-v0.5.0-linux-x86_64"],
-      "cmd": "chmod u+x ./star-probe* && ./star-probe-v0.5.0-linux-x86_64 --urls=http://probe-a-star.marathon.mesos:9000/status,http://probe-b-star.marathon.mesos:9000/status,http://probe-d-star.marathon.mesos:9000/status",
+      "cmd": "chmod u+x ./star-probe* && ./star-probe-v0.5.0-linux-x86_64 --urls=http://probe-a.star.marathon.mesos:9000/status,http://probe-b.star.marathon.mesos:9000/status,http://probe-d.star.marathon.mesos:9000/status",
       "cpus": 0.1,
       "mem": 64.0,
       "ipAddress": {
+        "groups": ["public"],
         "discovery": {
           "ports": [
             { "name": "status", "number": 9000, "protocol": "tcp" }
@@ -49,10 +49,11 @@
     {
       "id": "probe-d",
       "uris": ["file:///star/star-probe-v0.5.0-linux-x86_64"],
-      "cmd": "chmod u+x ./star-probe* && ./star-probe-v0.5.0-linux-x86_64 --urls=http://probe-a-star.marathon.mesos:9000/status,http://probe-b-star.marathon.mesos:9000/status,http://probe-c-star.marathon.mesos:9000/status",
+      "cmd": "chmod u+x ./star-probe* && ./star-probe-v0.5.0-linux-x86_64 --urls=http://probe-a.star.marathon.mesos:9000/status,http://probe-b.star.marathon.mesos:9000/status,http://probe-c.star.marathon.mesos:9000/status",
       "cpus": 0.1,
       "mem": 64.0,
       "ipAddress": {
+        "groups": ["public"],
         "discovery": {
           "ports": [
             { "name": "status", "number": 9000, "protocol": "tcp" }
@@ -69,9 +70,12 @@
       "cmd": "chmod u+x ./star-collect* && ./star-collect-v0.5.0-linux-x86_64 --resources-file=star-resources.json",
       "cpus": 0.2,
       "mem": 64.0,
-      "ports": [9001],
-      "requirePorts": true,
-      "acceptedResourceRoles": ["public"]
+      "ipAddress": {
+        "groups": ["public"],
+        "discovery": {
+          "ports": [{ "name": "status", "number": 9001, "protocol": "tcp" }]
+        }
+      }
     }
   ]
 }
