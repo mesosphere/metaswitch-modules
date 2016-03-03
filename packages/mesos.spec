@@ -60,7 +60,6 @@ BuildRequires: http-parser-devel
 
 Requires: python-boto
 Requires: cyrus-sasl-md5
-Requires: docker
 
 # The slaves will indirectly require time syncing with the master
 # nodes so just call out the dependency.
