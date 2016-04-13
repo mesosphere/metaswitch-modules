@@ -156,6 +156,7 @@ Now we'll see how Mesos can use Netmodules networking hooks and Calico networkin
         ./demo/stop-cluster.sh
 
 ##Next Steps
-For Information on installing Netmodules and Calico, see [calico-mesos-deployments](https://github.com/projectcalico/calico-mesos-deployments)
+For instructions on installing Netmodules manually, see the [Manual Install guide](docs/ManualInstall.md).
+For more information about running Calico with Mesos, see the [calico-containers Mesos docs](https://github.com/projectcalico/calico-containers/master/docs/mesos).
 
 [project-calico]: https://github.com/projectcalico/calico-containers
